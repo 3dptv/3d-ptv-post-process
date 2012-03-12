@@ -33,6 +33,7 @@ A PARTICULAR PURPOSE.
 
 */
 
+#pragma GCC diagnostic ignored "-Wformat-security"
 
 #include "stdafx.h"
 
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 	///////////////////////////////////////////////////////////////////////////////////
 	if (argc == 1) {
 		//if (NULL == (input = fopen("D:/post_proc_FOR_DEBASHISH.inp","r"))){ //_FOR_MARKUS
-		if (NULL == (input = fopen("D:/post_proc.inp","r"))){
+		if (NULL == (input = fopen("input.inp","r"))){
 		    cout<< "\ndid not find *.inp file";
 	    }
 	    else{
@@ -123,6 +124,10 @@ int main(int argc, char *argv[])
 	fscanf(input,"%i",&n); flushline(input);pointList.numOfFrames              = n;
 	
 
+	cout << "xuap ... "<<pointList.xuap<<"\n";
+    cout << "traj_point ... "<<pointList.traj_point<<"\n";
+    cout << "path ... "<<pointList.path<<"\n";
+    cout << pointList.pressure;
 	
 	
 	//end of read in control parameters
@@ -262,9 +267,14 @@ void readPTVFile(int n, int index)
     if(n+index>pointList.firstFile-1 && n+index<pointList.lastFile+1){
        c=sprintf (name, pointList.path);
 	   c+=sprintf (name+c, "/ptv_is.");
-       c+=sprintf (name+c, "%1d", n+index); 
+       c+=sprintf (name+c, "%d", n+index);
        
-       fpp = fopen(name,"r");
+     if (NULL == (fpp = fopen(name,"r"))){
+		    cout<< "\n did not find "<<name;
+	    }
+     else{
+         cout<< "\n succesfully opened file \n"<<name;
+     }
        fscanf (fpp, "%d\0", &numOfPoints);
        pointList.point[index+10][0][0]=numOfPoints;
        for (int i=1; i<numOfPoints+1; i++){
