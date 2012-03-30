@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
        }
 	}
 	///////////////////////////////////////////////////////////////////////////////////
-	scanf("Please hit a key  %s", garb);
+	// scanf("Please hit a key  %s", garb);
 
 	return 0;
 }
