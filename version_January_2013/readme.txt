@@ -16,7 +16,7 @@
 1) (simple)
 put the file "input.inp" in the C: folder
 adjust input.inp to your needs
-put the excecutable "post_process.exe" anywhere you like
+put the excecutable "Release/post_process.exe" anywhere you like
 run "post_process.exe" 
 
 enjoy the output files xuap.xxx and trajPoint.xxx
