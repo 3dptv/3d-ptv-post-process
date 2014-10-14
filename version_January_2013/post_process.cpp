@@ -45,7 +45,10 @@ int n;
 float e;
 
 static void flushline(FILE * fp);
+static void map_slices_to_cycles();
 static void readPTVFile(int n, int index);
+static void read_scanning_PTVFile(int n, int index); // added by Beat March 2013 for scanning
+static void prepare_fast_search();
 static void doCubicSplines(bool single,int number);
 static void setAllMatrixesToZero(int size);
 static void makeAT(int n, int m);
@@ -64,11 +67,14 @@ int main(int argc, char *argv[])
 	char pa[256];
 	char name[256];
 	int c;
+	int deltaFrames,numCycles;
 
 	//begin of read in control parameters
 	///////////////////////////////////////////////////////////////////////////////////
 	if (argc == 1) {
-		if (NULL == (input = fopen("C:/input.inp","r"))){ 
+		//if (NULL == (input = fopen("C:/input.inp","r"))){ 
+		//if (NULL == (input = fopen("D:/PTV/version_March_2013_scanning/input_2905.txt","r"))){ 
+		if (NULL == (input = fopen("D:\ScanPTV_publish\version_March_2013_scanning/input_41.txt","r"))){ 	
 		    cout<< "\ndid not find *.inp file";
 	    }
 	    else{
@@ -93,11 +99,13 @@ int main(int argc, char *argv[])
 
 	//data
     fscanf(input,"%s",pa); flushline(input);sprintf (pointList.path,pa);
-    fscanf(input,"%i",&n); flushline(input);pointList.firstFile                = n;
-	fscanf(input,"%i",&n); flushline(input);pointList.lastFile                 = n;
+    fscanf(input,"%i",&n); flushline(input);pointList.firstSFile               = n; // the code will compute the cycle numbers,i.e. the firstFile and lastFile by itself
+	fscanf(input,"%i",&n); flushline(input);pointList.lastSFile                = n; // the code will compute the cycle numbers,i.e. the firstFile and lastFile by itself
+	fscanf(input,"%i",&n); flushline(input);pointList.numSlices                = n;
 
     //fact
-	fscanf(input,"%f",&e); flushline(input);pointList.deltaT                   = e;
+	fscanf(input,"%f",&e); flushline(input);pointList.deltaT_between_slice     = e;
+	fscanf(input,"%f",&e); flushline(input);pointList.deltaT                   = e; // between scans, or for non-scanning
 	fscanf(input,"%f",&e); flushline(input);pointList.viscosity                = e;
 
 	//controls xuap
@@ -117,6 +125,10 @@ int main(int argc, char *argv[])
 	fscanf(input,"%f",&e); flushline(input);pointList.c2                       = e;
 	fscanf(input,"%i",&n); flushline(input);pointList.maxRank                  = n;
 	fscanf(input,"%i",&n); flushline(input);pointList.numOfFrames              = n;
+	fscanf(input,"%i",&n); flushline(input);pointList.max_grid_X               = n;
+	fscanf(input,"%i",&n); flushline(input);pointList.max_grid_Y               = n;
+	fscanf(input,"%i",&n); flushline(input);pointList.max_grid_Z               = n;
+	fscanf(input,"%i",&n); flushline(input);pointList.max_grid_C               = n;
 	flushline(input);
 	fscanf(input,"%f",&e); flushline(input);pointList.xminChamber              = e; //added by Markus, 20.07.2009
 	fscanf(input,"%f",&e); flushline(input);pointList.xmaxChamber              = e;
@@ -132,6 +144,23 @@ int main(int argc, char *argv[])
 	///////////////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////////////
+	// begin of #slice > 1 treatment
+	if(pointList.numSlices>1){
+		deltaFrames=pointList.lastSFile-pointList.firstSFile+1;
+		numCycles=int((double)deltaFrames/(double)pointList.numSlices);
+		pointList.firstFile=pointList.firstSFile;
+		pointList.lastFile=pointList.firstSFile+numCycles-1;
+	}
+	else{
+		//business as usual, like it was before scanning.
+		pointList.firstFile=pointList.firstSFile;
+		pointList.lastFile=pointList.lastSFile;
+	}
+
+	// end of #slice >1 treatment, 
+	///////////////////////////////////////////////////////////////////////////////////
+
+	///////////////////////////////////////////////////////////////////////////////////
 	if(pointList.xuap){
 	   pointList.PLh=int((double)pointList.PL/2.);
        pointList.count=0;
@@ -139,15 +168,26 @@ int main(int argc, char *argv[])
        pointList.meanVel=0.;
        pointList.meanAcc=0.;
 
+	   if(pointList.numSlices>1){
+		   // map slices frame and point id's to cycle frame and point id's
+		   map_slices_to_cycles();
+	   }
+
        for (int i=pointList.firstFile;i<pointList.lastFile+1;i++){
-	      if(i % 20 == 0){
+		   if(i % ((int)((double)20/(double)pointList.numSlices)+1) == 0){
              cout << "processing file ........."<<i<<"\n";
              cout << "max Vel.................."<<pointList.maxVel<<"\n";
 	         cout << "mean Vel................."<<pointList.meanVel<<"\n";
 	         cout << "mean Acc................."<<pointList.meanAcc<<"\n\n";
 	      }
 	      for (int ii=-pointList.PLh;ii<pointList.PLh+1;ii++){
-              readPTVFile(i,ii);
+			  if(pointList.numSlices>1){
+				  // read in scanned ptv_is files
+				  read_scanning_PTVFile(i,ii);
+			  }
+			  else{ //business as usual, no scanning
+                  readPTVFile(i,ii);
+			  }
           }
 	      doCubicSplines(false,0);
           writeXUAPFile(i);
@@ -165,6 +205,9 @@ int main(int argc, char *argv[])
 	   pointList.count6=0;
        pointList.meanDiss=0.;
 	   pointList.meanUSq=0.;
+
+	   cout << "\npreparing grid for neighbor search\n";
+	   prepare_fast_search();
 
        for (int i=pointList.firstFile;i<pointList.lastFile+1;i++){
 		  if((double)pointList.count3/(double)pointList.count>0){
@@ -197,12 +240,52 @@ void flushline(FILE * fp)
     while(fgetc(fp)!='\n' && !feof(fp));
 }
 
+void map_slices_to_cycles()
+{
+    FILE *fpp;
+	int c;
+    int numOfPoints;
+	int cid,old_cid;
+    char name[256];
+
+
+	old_cid=-1;
+    for (int i=pointList.firstSFile;i<pointList.lastSFile+1;i++){
+
+       if(i % 100 == 0){
+             cout << "mapping slice file ..."<<i<<"\n";
+	   }
+
+	   // determine cycle id
+	   cid=(int)( (double)(i-pointList.firstSFile)/(double)pointList.numSlices );
+	   if(cid>old_cid){
+		   old_cid=cid;
+		   pointList.numPoints_per_cycle[cid]=0; //so now it is initiated for cummulative cycle point_id
+	   }
+  
+       c=sprintf (name, pointList.path);
+	   c+=sprintf (name+c, "/ptv_is.");
+       c+=sprintf (name+c, "%1d", i); 
+       
+       fpp = fopen(name,"r");
+       fscanf (fpp, "%d\0", &numOfPoints);
+       
+       for (int j=0; j<numOfPoints; j++){
+		   // pointList.map_slice_cycle[i-pointList.firstSFile+1][j][0]=cid;//cycle id
+		   pointList.map_slice_cycle[i-pointList.firstSFile][j]=j+pointList.numPoints_per_cycle[cid];//cummulated cycle point_id
+       }
+       fclose (fpp);
+
+	   pointList.numPoints_per_cycle[cid]+=numOfPoints;
+    }
+}
+
 void readPTVFile(int n, int index)
 {
     FILE *fpp;
 	int c;
     int numOfPoints;
-    int left,right;
+	int left,right;
     double x,y,z,rmsDist;
 
     char name[256];
@@ -215,7 +298,7 @@ void readPTVFile(int n, int index)
        fpp = fopen(name,"r");
        fscanf (fpp, "%d\0", &numOfPoints);
        pointList.point[index+pointList.PLh][0][0]=numOfPoints;
-       for (int i=1; i<numOfPoints+1; i++){
+       for (int i=1; i<numOfPoints+1; i++){ //these lines 218-231 müssen geändert werden
            fscanf (fpp, "%d\0", &left);
            fscanf (fpp, "%d\0", &right);
            fscanf (fpp, "%lf\0", &x);
@@ -237,6 +320,74 @@ void readPTVFile(int n, int index)
     }
 }
 
+void read_scanning_PTVFile(int n, int index)
+{
+    FILE *fpp;
+	int c;
+    int numOfPoints;
+    int fid_left,left,fid_right,right,cid,old_cid,id,cpid,left_pid,right_pid;
+    double x,y,z,rmsDist;
+
+    char name[256];
+
+    if(n+index>pointList.firstFile-1 && n+index<pointList.lastFile+1){
+
+        pointList.point[index+pointList.PLh][0][0]=pointList.numPoints_per_cycle[n+index-pointList.firstFile];
+		
+		//now loop through slices etc
+		for (int s=0;s<pointList.numSlices;s++){
+
+		   c=sprintf (name, pointList.path);
+	       c+=sprintf (name+c, "/ptv_is.");
+           //c+=sprintf (name+c, "%1d", n+index); <- as was before scanning
+		   // map n+index to proper slice frame id
+		   id = ((n+index)-pointList.firstFile)*pointList.numSlices+s+pointList.firstSFile;
+           c+=sprintf (name+c, "%1d", id); // <--and now we have cid mapped to id
+           fpp = fopen(name,"r");
+           fscanf (fpp, "%d\0", &numOfPoints);
+           for (int i=0; i<numOfPoints; i++){ //these lines 218-231 müssen geändert werden
+               fscanf (fpp, "%d\0",  &fid_left);
+			   fscanf (fpp, "%d\0",  &left);
+               fscanf (fpp, "%d\0",  &fid_right);
+			   fscanf (fpp, "%d\0",  &right);
+               fscanf (fpp, "%lf\0", &x);
+               fscanf (fpp, "%lf\0", &y);
+               fscanf (fpp, "%lf\0", &z);
+               rmsDist=0.005;
+
+			   cid       = n+index;
+			   cpid      = 1+pointList.map_slice_cycle[id-pointList.firstFile][i];
+			   if(fid_left>-1){
+			      left_pid  = pointList.map_slice_cycle[fid_left-pointList.firstSFile ][left ];
+			   }
+			   else{
+                  left_pid  = left; 
+			   }
+			   if(fid_right>-1){
+			      right_pid = pointList.map_slice_cycle[fid_right-pointList.firstSFile][right];
+			   }
+			   else{
+                  right_pid = right;
+			   }
+
+			   pointList.point[index+pointList.PLh][cpid][0]=left_pid+1;
+		       pointList.point[index+pointList.PLh][cpid][1]=right_pid+1;
+
+               pointList.point[index+pointList.PLh][cpid][2]=x*0.001;
+               pointList.point[index+pointList.PLh][cpid][3]=y*0.001;
+               pointList.point[index+pointList.PLh][cpid][4]=z*0.001;
+               pointList.point[index+pointList.PLh][cpid][15]=rmsDist;
+			   pointList.point[index+pointList.PLh][cpid][16]=pointList.deltaT_between_slice*((double)s-(double)pointList.numSlices/2); //delta t relative to time of middle slice 
+		   
+		   }
+           fclose (fpp);
+		}
+    }
+    else{
+       pointList.point[index+pointList.PLh][0][0]=0;
+    }
+}
+
 void doCubicSplines(bool single,int number)
 {
 
@@ -246,30 +397,30 @@ void doCubicSplines(bool single,int number)
    //double tolerance=0.15;//StrToFloat(paramForm->toleranceEdit->Text);
    double velocity;
 
-   double weight;
+   double weight,time;
 
    int start,end;
    if(!single){
       start=1;
-      end=nP;
+      end=nP; 
    }
    else{
       start=number;
       end=number;
    }
 
-   for(int i=start;i<end+1;i++){
+   for(int i=start;i<end+1;i++){ 
       pointList.point[pointList.PLh][i][14]=0; //can be cubic splined
       int maxIndex=pointList.PLh;
       int minIndex=pointList.PLh;
       int index=pointList.PLh;
       int badCounter=0;
-      ind[index]=i;
+      ind[index]=i; 
       bool ok=true;
 
 	  while(index>0 && ok){
-          if(pointList.point[index][ind[index]][0]>0 && pointList.point[index][0][0]>0){
-             ind[index-1]=pointList.point[index][ind[index]][0];
+          if(pointList.point[index][ind[index]][0]>0 && pointList.point[index][0][0]>0){ 
+             ind[index-1]=pointList.point[index][ind[index]][0]; 
              index--;
              minIndex=index;
           }
@@ -281,8 +432,8 @@ void doCubicSplines(bool single,int number)
       ind[index]=i;
       ok=true;
       while(index<2*pointList.PLh && ok){
-          if(pointList.point[index][ind[index]][1]>0 && pointList.point[index][0][0]>0){
-             ind[index+1]=pointList.point[index][ind[index]][1];
+          if(pointList.point[index][ind[index]][1]>0 && pointList.point[index][0][0]>0){ 
+             ind[index+1]=pointList.point[index][ind[index]][1]; 
              index++;
              maxIndex=index;
           }
@@ -301,15 +452,26 @@ void doCubicSplines(bool single,int number)
           pointList.point[pointList.PLh][i][14]=1;
           //x-Component
           setAllMatrixesToZero(4);
-          for(int t=minIndex-pointList.PLh;t<maxIndex-pointList.PLh+1;t++){
-              weight     = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][15];
+          for(int t=minIndex-pointList.PLh;t<maxIndex-pointList.PLh+1;t++){ //anpassen so dass t nicht mehr genau Zeit, sondern 'nur' master loop index ist
+              weight     = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][15];//da muss man anpassen, ind,2
               weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
 			  weight   = 1.; //Beat March 2009
+
+			  //this is the only chamge due to scanning, works also if numSlice=0
+			  if(pointList.numSlices>1){
+                  time=(double)t*pointList.deltaT + pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][16];
+			  }
+			  else{
+			      time=(double)t*pointList.deltaT;
+			  }
+			  //end of only chamge due to scanning
+
               pointList.A[t+pointList.PLh][0] = 1.*weight;
-              pointList.A[t+pointList.PLh][1] = (double)t*pointList.deltaT*weight;
-              pointList.A[t+pointList.PLh][2] = pow((double)t*pointList.deltaT,2.)*weight; // t is integer from e.g. -11 to 11
-              pointList.A[t+pointList.PLh][3] = pow((double)t*pointList.deltaT,3.)*weight;
+              pointList.A[t+pointList.PLh][1] = time*weight; 
+              pointList.A[t+pointList.PLh][2] = pow(time,2.)*weight; // t is integer from e.g. -11 to 11
+              pointList.A[t+pointList.PLh][3] = pow(time,3.)*weight;
               pointList.y[0][t+pointList.PLh] = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][2]*weight;
+			  
           }
           makeAT(pointList.PL,4);
           makeATA(pointList.PL,4);
@@ -326,10 +488,20 @@ void doCubicSplines(bool single,int number)
               weight     = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][15];
               weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
 			  weight   = 1.; //Beat March 2009
+
+			  //this is the only chamge due to scanning, works also if numSlice=0
+			  if(pointList.numSlices>1){
+                  time=(double)t*pointList.deltaT+pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][16];
+			  }
+			  else{
+			      time=(double)t*pointList.deltaT;
+			  }
+			  //end of only chamge due to scanning
+
               pointList.A[t+pointList.PLh][0] = 1.*weight;
-              pointList.A[t+pointList.PLh][1] = (double)t*pointList.deltaT*weight;
-              pointList.A[t+pointList.PLh][2] = pow((double)t*pointList.deltaT,2.)*weight;
-              pointList.A[t+pointList.PLh][3] = pow((double)t*pointList.deltaT,3.)*weight;
+              pointList.A[t+pointList.PLh][1] = time*weight;
+              pointList.A[t+pointList.PLh][2] = pow(time,2.)*weight;
+              pointList.A[t+pointList.PLh][3] = pow(time,3.)*weight;
               pointList.y[0][t+pointList.PLh] = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][3]*weight;
           }
           makeAT(pointList.PL,4);
@@ -346,10 +518,20 @@ void doCubicSplines(bool single,int number)
               weight     = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][15];
               weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
 			  weight   = 1.; //Beat March 2009
+
+			  //this is the only chamge due to scanning, works also if numSlice=0
+			  if(pointList.numSlices>1){
+                  time=(double)t*pointList.deltaT+pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][16];
+			  }
+			  else{
+			      time=(double)t*pointList.deltaT;
+			  }
+			  //end of only chamge due to scanning
+
               pointList.A[t+pointList.PLh][0] = 1.*weight;
-              pointList.A[t+pointList.PLh][1] = (double)t*pointList.deltaT*weight;
-              pointList.A[t+pointList.PLh][2] = pow((double)t*pointList.deltaT,2.)*weight;
-              pointList.A[t+pointList.PLh][3] = pow((double)t*pointList.deltaT,3.)*weight;
+              pointList.A[t+pointList.PLh][1] = time*weight;
+              pointList.A[t+pointList.PLh][2] = pow(time,2.)*weight;
+              pointList.A[t+pointList.PLh][3] = pow(time,3.)*weight;
               pointList.y[0][t+pointList.PLh] = pointList.point[t+pointList.PLh][ind[t+pointList.PLh]][4]*weight;
           }
           makeAT(pointList.PL,4);
@@ -651,7 +833,11 @@ void writeXUAPFile(int t)
 
 void followTrajPoint(FILE *fpp, int t,int startPoint)
 {
-     int pCounterA,pCounterB,pCounterC,numInTraj;
+     
+	 int ind_X,ind_Y,ind_Z,ind_C,ind_count;
+	 short ind_list[1000];
+	
+	 int pCounterA,pCounterB,pCounterC,numInTraj;
      int startT, startP;
      double dist,dx,dy,dz;
      double centerX,centerY,centerZ;
@@ -690,7 +876,8 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
      startT=t;
 
      if(t==pointList.firstFile){
-        readXUAPFile(t,true);
+		 cout << "\nreading initial xuap, may take some time....\n\n";
+         readXUAPFile(t,true);
      }
      else{
         readXUAPFile(t,false);
@@ -704,7 +891,11 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
      int n;
      for(int nn=start;nn<end;nn++){
          time=2; // is set to 2 to calculate local acc
-
+		 /*if(end>5000){
+			 if(nn % 2000 == 0){
+			     cout << "processing point ............."<<nn<<"\n";
+			 }
+		 }*/
 //if((double)pointList.count3/(double)pointList.count>0){
 //    cout << "point per sphere.............."<<(double)pointList.count3/(double)pointList.count<<"\n";
 //}
@@ -741,11 +932,65 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 				  minDistBIndex[i]=0;
 				  minDistCIndex[i]=0;
                }
-               
+               /// Beat March 2013, these 3 for loops are VERY SLOW for large number of particles, i.e. for scanning
                //AAAAAAAAAAAA time step t-1
-               for(int i=1;i<pointList.point[time-1][0][0]+1;i++){
-                  dist=pow(pow(pointList.point[time-1][i][2]-centerX,2.)+pow(pointList.point[time-1][i][3]-centerY,2.)+pow(pointList.point[time-1][i][4]-centerZ,2.),0.5); // distance between measurement point and all points in the xuap file
-                  if(dist<minDistA[pointList.maxRank] && pointList.point[time-1][i][11]>0.){ // check if cubic spline successful
+               // the following bit has been replaced by fast_search 
+               /*for(int i=1;i<pointList.point[time-1][0][0]+1;i++){
+			      dist=pow(pow(pointList.point[time-1][i][2]-centerX,2.)+pow(pointList.point[time-1][i][3]-centerY,2.)+pow(pointList.point[time-1][i][4]-centerZ,2.),0.5); // distance between measurement point and all points in the xuap file
+				  if(dist<minDistA[pointList.maxRank] && pointList.point[time-1][i][11]>0.){ // check if cubic spline successful
+                     rank=pointList.maxRank; // whole paragraph: sorting the points according to their distance to measurement point: k=0 closest point, k=500 last point
+                     for(int k=pointList.maxRank;k>-1;k--){
+                        if(dist<minDistA[k]){
+                           rank=k;							
+                        }
+                     }
+                     for(int l=pointList.maxRank;l>rank;l--){
+                        minDistA[l]=minDistA[l-1];
+                        minDistAIndex[l]=minDistAIndex[l-1];
+                     }
+                     minDistA[rank]=dist;
+                     minDistAIndex[rank]=i;
+                  }
+			   }
+			   for(int i=0;i<500;i++){
+                  minDistA[i]=1000; // initialization for the search radius, max. 1000 mm
+				  minDistAIndex[i]=0;
+               }*/
+			   //end of replaced stuff
+
+			   //Beat March 2013 find i not as loop thorugh everything, but only through 3 x 3 surounding grid cells
+			   ind_X=(int)((double)(centerX-pointList.minX)/pointList.dh_X);
+			   ind_Y=(int)((double)(centerY-pointList.minY)/pointList.dh_Y);
+			   ind_Z=(int)((double)(centerZ-pointList.minZ)/pointList.dh_Z);
+			   if(ind_X<0 ){ind_X=0 ;}
+			   if(ind_Y<0 ){ind_Y=0 ;}
+			   if(ind_Z<0 ){ind_Z=0 ;}
+			   if(ind_X>pointList.max_grid_X-1){ind_X=pointList.max_grid_X-1;}
+			   if(ind_Y>pointList.max_grid_Y-1){ind_Y=pointList.max_grid_Y-1;}
+			   if(ind_Z>pointList.max_grid_Z-1){ind_Z=pointList.max_grid_Z-1;}
+
+			   ind_count=0;
+			   for (int ii=-1;ii<2;ii++){
+				   for (int jj=-1;jj<2;jj++){
+					   for (int kk=-1;kk<2;kk++){
+						   if(ind_X+ii>=0 && ind_Y+jj>=0 && ind_Z+kk>=0 && ind_X+ii<pointList.max_grid_X && ind_Y+jj<pointList.max_grid_Y && ind_Z+kk<pointList.max_grid_Z){
+			                  ind_C=pointList.fast_search[time-1][ind_X+ii][ind_Y+jj][ind_Z+kk][pointList.max_grid_C];
+						      if(ind_C>0){
+							     for(int ind=0;ind<ind_C;ind++){
+								     ind_list[ind_count]=pointList.fast_search[time-1][ind_X+ii][ind_Y+jj][ind_Z+kk][ind];
+								     ind_count++;
+					     	     }
+							  }
+						   }
+					   }
+				   }
+			   }
+			   for(int ind=0;ind<ind_count;ind++){						   
+                  int i=ind_list[ind];
+				  //end of i replacement
+
+			      dist=pow(pow(pointList.point[time-1][i][2]-centerX,2.)+pow(pointList.point[time-1][i][3]-centerY,2.)+pow(pointList.point[time-1][i][4]-centerZ,2.),0.5); // distance between measurement point and all points in the xuap file
+				  if(dist<minDistA[pointList.maxRank] && pointList.point[time-1][i][11]>0.){ // check if cubic spline successful
                      rank=pointList.maxRank; // whole paragraph: sorting the points according to their distance to measurement point: k=0 closest point, k=500 last point
                      for(int k=pointList.maxRank;k>-1;k--){
                         if(dist<minDistA[k]){
@@ -761,8 +1006,30 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                   }
                }
                //BBBBBBBBBBBBBBB time step t
-               for(int i=1;i<pointList.point[time][0][0]+1;i++){
-                  dist=pow(pow(pointList.point[time][i][2]-centerX,2.)+pow(pointList.point[time][i][3]-centerY,2.)+pow(pointList.point[time][i][4]-centerZ,2.),0.5);
+               // has been replaced by fast_search for(int i=1;i<pointList.point[time][0][0]+1;i++){
+                  
+               //Beat March 2013 find i not as loop thorugh everything, but only through 3 x 3 surounding grid cells
+			   ind_count=0;
+			   for (int ii=-1;ii<2;ii++){
+				   for (int jj=-1;jj<2;jj++){
+					   for (int kk=-1;kk<2;kk++){
+						   if(ind_X+ii>=0 && ind_Y+jj>=0 && ind_Z+kk>=0 && ind_X+ii<pointList.max_grid_X && ind_Y+jj<pointList.max_grid_Y && ind_Z+kk<pointList.max_grid_Z){
+			                  ind_C=pointList.fast_search[time][ind_X+ii][ind_Y+jj][ind_Z+kk][pointList.max_grid_C];
+						      if(ind_C>0){
+							     for(int ind=0;ind<ind_C;ind++){
+								     ind_list[ind_count]=pointList.fast_search[time][ind_X+ii][ind_Y+jj][ind_Z+kk][ind];
+								     ind_count++;
+					     	     }
+							  }
+						   }
+					   }
+				   }
+			   }
+			   for(int ind=0;ind<ind_count;ind++){						   
+                  int i=ind_list[ind];
+				  //end of i replacement
+			   
+			      dist=pow(pow(pointList.point[time][i][2]-centerX,2.)+pow(pointList.point[time][i][3]-centerY,2.)+pow(pointList.point[time][i][4]-centerZ,2.),0.5);
                   if(dist<minDistB[pointList.maxRank] && pointList.point[time][i][11]>0.){
                      rank=pointList.maxRank;
                      for(int k=pointList.maxRank;k>-1;k--){
@@ -779,7 +1046,29 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                   }
                }
                //CCCCCCCCCCCCCCCCCCCCCCCCCC time step t+1
-               for(int i=1;i<pointList.point[time+1][0][0]+1;i++){
+               // has been replaced by fast_search for(int i=1;i<pointList.point[time+1][0][0]+1;i++){
+
+			   //Beat March 2013 find i not as loop thorugh everything, but only through 3 x 3 surounding grid cells
+			   ind_count=0;
+			   for (int ii=-1;ii<2;ii++){
+				   for (int jj=-1;jj<2;jj++){
+					   for (int kk=-1;kk<2;kk++){
+						   if(ind_X+ii>=0 && ind_Y+jj>=0 && ind_Z+kk>=0 && ind_X+ii<pointList.max_grid_X && ind_Y+jj<pointList.max_grid_Y && ind_Z+kk<pointList.max_grid_Z){
+			                  ind_C=pointList.fast_search[time+1][ind_X+ii][ind_Y+jj][ind_Z+kk][pointList.max_grid_C];
+						      if(ind_C>0){
+							     for(int ind=0;ind<ind_C;ind++){
+								     ind_list[ind_count]=pointList.fast_search[time+1][ind_X+ii][ind_Y+jj][ind_Z+kk][ind];
+								     ind_count++;
+					     	     }
+							  }
+						   }
+					   }
+				   }
+			   }
+			   for(int ind=0;ind<ind_count;ind++){						   
+                  int i=ind_list[ind];
+				  //end of i replacement 
+
                   dist=pow(pow(pointList.point[time+1][i][2]-centerX,2.)+pow(pointList.point[time+1][i][3]-centerY,2.)+pow(pointList.point[time+1][i][4]-centerZ,2.),0.5);
                   if(dist<minDistC[pointList.maxRank] && pointList.point[time+1][i][11]>0.){
                      rank=pointList.maxRank;
@@ -1124,12 +1413,12 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 					  pointList.traj[numInTraj][ 9]=(double)n;
 				  }
 
-               numInTraj++;
+               numInTraj++; //da sollte doch irgendein check sein, wenn numFrames überschritten wird, i.e. max trajlength erreicht ist.
 
                //schauen ob's einen nächsten gibt
-               if(pointList.point[time][n][1]>0 && time<pointList.lastFile){
+			   if(pointList.point[time][n][1]>0 && time<pointList.lastFile-pointList.firstFile && time<pointList.numOfFrames-2){ //Beat March 2013, perhaps now the trajectories don't have these strange links
                    n=pointList.point[time][n][1];
-                   time++;
+                   time++; //da sollte doch irgendein check sein, wenn numFrames überschritten wird, i.e. max trajlength erreicht ist.
                    if( pointList.point[time][n][11]<1. ){  
                        ok=false;
                    }
@@ -1476,7 +1765,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 					 Q=(1./4.)*(wsq-twosijsij);
                      R=-(1./3.)*(sijsjkski+(3./4.)*wwsij);
 					 diva=daxdxp[ii]+daydyp[ii]+dazdzp[ii];
-				     ref_diva=fabs((1./4.)*wsq)+fabs((1./4.)*twosijsij)+fabs(daxdxp[ii])+fabs(daydyp[ii])+fabs(dazdzp[ii]);
+				     ref_diva=2.*fabs((1./4.)*wsq)+2.*fabs((1./4.)*twosijsij)+fabs(daxdxp[ii])+fabs(daydyp[ii])+fabs(dazdzp[ii]);
                      if(ref_diva>0){
                          reldiva=fabs(2*Q+diva)/ref_diva; 
 					 }
@@ -1657,11 +1946,16 @@ void readXUAPFile(int n, bool firstTime)
     c_xuag+=sprintf (name_xuag+c_xuag, "/xuag.");
     c_xuag+=sprintf (name_xuag+c_xuag, "%1d", n-1);
 
+    int ind_X,ind_Y,ind_Z,ind_C,dummy_count;
+
+	dummy_count=0;
     
-    
-	
     
        for(int i=0;i<pointList.numOfFrames;i++){
+
+          
+		   
+
           if(n-2+i>pointList.firstFile-1 && n-2+i<pointList.lastFile+1){
              if(i<pointList.numOfFrames-1 && !(firstTime)){
                  //write xuag
@@ -1676,13 +1970,35 @@ void readXUAPFile(int n, bool firstTime)
 				    fclose (fpp_xuag);
 				 }
 			     //end write xuag
+				 //rotate point entries
 				 for(int j=0;j<pointList.point[i+1][0][0]+1;j++){           
 					for(int k=0;k<37;k++){
                         pointList.point[i][j][k]=pointList.point[i+1][j][k];
                     }
                  }
+				 //Beat March 2013 also rotate fast_search grid entries
+				 for (int ii=0;ii<pointList.max_grid_X;ii++){
+			         for (int jj=0;jj<pointList.max_grid_Y;jj++){
+				         for (int kk=0;kk<pointList.max_grid_Z;kk++){
+							 for (int cc=0;cc<pointList.max_grid_C+1;cc++){
+					              pointList.fast_search[i][ii][jj][kk][cc]=pointList.fast_search[i+1][ii][jj][kk][cc];
+							 }
+				         }
+			         }
+		         }
              }
              else{
+				 cout << "reading xuap ................."<<n-2+i<<"\n";
+
+                //Beat March 2013, init fast_search counter
+		        for (int ii=0;ii<pointList.max_grid_X;ii++){
+			        for (int jj=0;jj<pointList.max_grid_Y;jj++){
+				        for (int kk=0;kk<pointList.max_grid_Z;kk++){
+					        pointList.fast_search[i][ii][jj][kk][pointList.max_grid_C]=0;
+				        }
+			        }
+		        }
+
                 numOfPoints=0;
                 c=sprintf (name, pointList.path);
                 c+=sprintf (name+c, "/xuap.");
@@ -1717,6 +2033,28 @@ void readXUAPFile(int n, bool firstTime)
                    pointList.point[i][numOfPoints][9]=ay;
                    pointList.point[i][numOfPoints][10]=az;
                    pointList.point[i][numOfPoints][11]=cubic;
+
+				   //Beat March 2013 prepare fast search
+				   ind_X=(int)((double)(x-pointList.minX)/pointList.dh_X);
+				   ind_Y=(int)((double)(y-pointList.minY)/pointList.dh_Y);
+				   ind_Z=(int)((double)(z-pointList.minZ)/pointList.dh_Z);
+				   if(ind_X<0 ){ind_X=0 ;}
+				   if(ind_Y<0 ){ind_Y=0 ;}
+				   if(ind_Z<0 ){ind_Z=0 ;}
+				   if(ind_X>pointList.max_grid_X-1){ind_X=pointList.max_grid_X-1;}
+				   if(ind_Y>pointList.max_grid_Y-1){ind_Y=pointList.max_grid_Y-1;}
+				   if(ind_Z>pointList.max_grid_Z-1){ind_Z=pointList.max_grid_Z-1;}
+				   if(cubic==1){
+				      ind_C=pointList.fast_search[i][ind_X][ind_Y][ind_Z][pointList.max_grid_C];
+					  pointList.fast_search[i][ind_X][ind_Y][ind_Z][ind_C]=numOfPoints;
+					  pointList.fast_search[i][ind_X][ind_Y][ind_Z][pointList.max_grid_C]++;
+			          if(pointList.fast_search[i][ind_X][ind_Y][ind_Z][pointList.max_grid_C]>=pointList.max_grid_C){
+					      cout << "\nups, max in bin is reached, adpat in stdafx.h, read_scanning_PTVFile, folloTrajPoint\n";
+					      pointList.fast_search[i][ind_X][ind_Y][ind_Z][pointList.max_grid_C]=pointList.max_grid_C;
+						  dummy_count++;
+				      }
+				   }
+
                 }
                 fclose (fpp);
                 pointList.point[i][0][0]=numOfPoints;
@@ -1726,6 +2064,81 @@ void readXUAPFile(int n, bool firstTime)
              pointList.point[i][0][0]=0;
           }
        }
+}
+
+void prepare_fast_search()
+{
+    double left,right,x,y,z,u,v,w,ax,ay,az,dummy,cubic;
+
+    FILE *fpp;
+    char name[256];
+    int c;
+
+	pointList.minX=1e6;
+	pointList.minY=1e6;
+	pointList.minZ=1e6;
+	pointList.maxX=-1e6;
+	pointList.maxY=-1e6;
+	pointList.maxZ=-1e6;
+
+    c=sprintf (name, pointList.path);
+    c+=sprintf (name+c, "/xuap.");
+	c+=sprintf (name+c, "%1d", pointList.firstFile+pointList.minLeftRight+2);
+    fpp = fopen(name,"r");
+    while(!feof(fpp)){
+         fscanf (fpp, "%lf\0", &left);
+         fscanf (fpp, "%lf\0", &right);
+         fscanf (fpp, "%lf\0", &dummy); //measured x
+         fscanf (fpp, "%lf\0", &dummy); //measured y
+         fscanf (fpp, "%lf\0", &dummy); //measured z
+         fscanf (fpp, "%lf\0", &x); //cubic spline x
+         fscanf (fpp, "%lf\0", &y); //cubic spline y
+         fscanf (fpp, "%lf\0", &z); //cubic spline z
+         fscanf (fpp, "%lf\0", &u);
+         fscanf (fpp, "%lf\0", &v);
+         fscanf (fpp, "%lf\0", &w);
+         fscanf (fpp, "%lf\0", &ax);
+         fscanf (fpp, "%lf\0", &ay);
+         fscanf (fpp, "%lf\0", &az);
+         fscanf (fpp, "%lf\0", &cubic);
+		 if(x<pointList.minX && cubic==1){pointList.minX=x;}
+		 if(y<pointList.minY && cubic==1){pointList.minY=y;}
+		 if(z<pointList.minZ && cubic==1){pointList.minZ=z;}
+		 if(x>pointList.maxX && cubic==1){pointList.maxX=x;}
+		 if(y>pointList.maxY && cubic==1){pointList.maxY=y;}
+		 if(z>pointList.maxZ && cubic==1){pointList.maxZ=z;}
+    }
+    fclose (fpp);
+
+	cout << "\nmin x ......................."<<pointList.minX<<"\n";//min max stuff
+	cout << "max x ......................."<<pointList.maxX<<"\n";//min max stuff
+	cout << "min y ......................."<<pointList.minY<<"\n";//min max stuff
+	cout << "max y ......................."<<pointList.maxX<<"\n";//min max stuff
+	cout << "min z ......................."<<pointList.minZ<<"\n";//min max stuff
+	cout << "max z ......................."<<pointList.maxZ<<"\n";//min max stuff
+
+	pointList.num_X=(int)((double)(pointList.maxX-pointList.minX)/pointList.maxRadius);
+	pointList.num_Y=(int)((double)(pointList.maxY-pointList.minY)/pointList.maxRadius);
+	pointList.num_Z=(int)((double)(pointList.maxZ-pointList.minZ)/pointList.maxRadius);
+
+	cout << "\nopt. # grid cells in x-dir..."<<pointList.num_X<<"\n";//min max stuff 
+	cout << "opt. # grid cells in y-dir..."<<pointList.num_Y<<"\n";//min max stuff
+	cout << "opt. # grid cells in z-dir..."<<pointList.num_Z<<"\n";//min max stuff
+
+	if(pointList.num_X>pointList.max_grid_X){pointList.num_X=pointList.max_grid_X;}
+	if(pointList.num_Y>pointList.max_grid_Y){pointList.num_Y=pointList.max_grid_Y;}
+	if(pointList.num_Z>pointList.max_grid_Z){pointList.num_Z=pointList.max_grid_Z;}
+
+	cout << "\n# grid cells in x-dir........"<<pointList.num_X<<"\n";//min max stuff 
+	cout << "# grid cells in y-dir........"<<pointList.num_Y<<"\n";//min max stuff
+	cout << "# grid cells in z-dir........"<<pointList.num_Z<<"\n";//min max stuff
+
+	pointList.dh_X=(double)(pointList.maxX-pointList.minX)/(double)pointList.num_X;
+	pointList.dh_Y=(double)(pointList.maxY-pointList.minY)/(double)pointList.num_Y;
+	pointList.dh_Z=(double)(pointList.maxZ-pointList.minZ)/(double)pointList.num_Z;
+
+	
+	
 }
 
 void readXUAGFile(int n, bool firstTime)
