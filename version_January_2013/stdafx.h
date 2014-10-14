@@ -27,8 +27,13 @@ struct TpointList
 
   char experiment[256];
 
+  int firstSFile;
+  int lastSFile;
   int firstFile;
   int lastFile;
+  int numSlices; //added by Beat March 2013
+  short map_slice_cycle[40000][2000];//added by Beat March 2013 <----------das ist recht kritisch, kann es nicht weiter erhˆhen 
+  int numPoints_per_cycle[10000];//added by Beat March 2013
   int PL,minLeftRight,PLh;
   int count,count2,count3,count4,count5,count6;
 
@@ -50,6 +55,7 @@ struct TpointList
   char path[256];
 
   double deltaT;
+  double deltaT_between_slice;
   double tolMaxVel;
   int polyConst;
   int maxRank;
@@ -59,9 +65,12 @@ struct TpointList
   double weVel;
   double viscosity;
 
-  double point[500][7000][48];
-  bool occ[30000][7000];
-  //int fast_search[200][12][12][12][100];
+  double point[200][25000][37]; ////// Beat March 2013, da liegt die einzige 'Schw‰che': Max traj length = 166,.... ohne xuag kˆnnten es 500 sein
+  bool occ[10000][25000]; // occ[10000][25000];
+  short fast_search[200][18][18][9][26];//Beat March 2013, should roughly match the aspect ratio of the observation domain
+  int max_grid_X,max_grid_Y,max_grid_Z,max_grid_C;//Beat March 2013, should roughly match the aspect ratio of the observation domain
+  double maxX,minX,maxY,minY,maxZ,minZ,dh_X,dh_Y,dh_Z;
+  int num_X,num_Y,num_Z;
 
   int numOfFrames;
   bool changed;
