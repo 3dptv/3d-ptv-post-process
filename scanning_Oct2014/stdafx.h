@@ -9,13 +9,18 @@
 
 
 #include <iostream>
-#include <tchar.h>
+
+# ifdef OS_WINDOWS
+   #include <tchar.h>
+   #include <malloc.h>
+#endif
+
+
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <fstream>
 #include <string.h>
 #include <float.h>
