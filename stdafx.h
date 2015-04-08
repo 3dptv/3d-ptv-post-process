@@ -30,7 +30,7 @@ struct TpointList
   int firstFile;
   int lastFile;
   int PL,minLeftRight;
-  int count,count2,count3,count4,count5;
+  int count,count2,count3,count4,count5,count6;
 
   double maxVel;
   double meanVel;
@@ -43,6 +43,7 @@ struct TpointList
   
   bool xuap;
   bool traj_point;
+  bool derivatives;
   bool pressure;
   bool Hessian;
 
