@@ -37,8 +37,8 @@ USERDEFINES =
 SYSDEFINES = NO_STRICT
 # ---------------------------------------------------------------------------
 CFLAG1 = -I"..\..\Program Files\Borland\CBuilder4\Projects";$(BCB)\include;$(BCB)\include\vcl \
-  -Od -H=$(BCB)\lib\vcl40.csm -w -Ve -r- -a8 -k -y -v -vi- -c -b- -w-par -w-inl \
-  -Vx -tW -tWM -D$(SYSDEFINES);$(USERDEFINES)
+  -Od -Hc -H=$(BCB)\lib\vcl40.csm -w -Ve -r- -a8 -k -y -v -vi- -c -b- -w-par \
+  -w-inl -Vx -tW -tWM -D$(SYSDEFINES);$(USERDEFINES)
 PFLAGS = -U"..\..\Program Files\Borland\CBuilder4\Projects";$(BCB)\lib\obj;$(BCB)\lib;$(RELEASELIBPATH) \
   -I"..\..\Program Files\Borland\CBuilder4\Projects";$(BCB)\include;$(BCB)\include\vcl \
   -$Y+ -$W -$O- -v -JPHNE -M
@@ -80,18 +80,6 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
-
-[HistoryLists\hlIncludePath]
-Count=1
-Item0=..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\include;$(BCB)\include\vcl
-
-[HistoryLists\hlLibraryPath]
-Count=1
-Item0=..\..\Program Files\Borland\CBuilder4\Projects;$(BCB)\lib\obj;$(BCB)\lib
-
-[HistoryLists\hlDebugSourcePath]
-Count=1
-Item0=$(BCB)\source\vcl
 
 [Debugging]
 DebugSourceDirs=$(BCB)\source\vcl

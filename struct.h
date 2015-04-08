@@ -30,12 +30,6 @@ __published:	// IDE-managed Components
         TEdit *stepEdit;
         TLabel *Label4;
         TCheckBox *readyCheck;
-        TEdit *uEdit;
-        TEdit *vEdit;
-        TEdit *wEdit;
-        TEdit *axEdit;
-        TEdit *AyEdit;
-        TEdit *AzEdit;
 private:	// User declarations
 public:		// User declarations
         __fastcall TstructForm(TComponent* Owner);

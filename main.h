@@ -43,14 +43,22 @@ __published:	// IDE-managed Components
         TLabel *Label13;
         TLabel *Label14;
         TLabel *Label15;
+        TEdit *minXEdit;
+        TEdit *minYEdit;
+        TEdit *minZEdit;
         TEdit *meanSuccessDivEdit;
         TLabel *Label16;
         TEdit *reEdit;
         TLabel *Label17;
         TEdit *succIntTrajEdit;
         TLabel *Label20;
+        TEdit *divEdit;
+        TLabel *Label21;
+        TEdit *accEdit;
+        TLabel *Label22;
         TEdit *maxDistEdit;
         TLabel *Label23;
+        TEdit *minRemainEdit;
         TLabel *Label24;
         TButton *volumeBtn;
         TOpenDialog *OpenDialog5;
@@ -91,12 +99,19 @@ __published:	// IDE-managed Components
         TButton *accuracyBtn;
         TButton *reprBtn;
         TButton *rotaBtn;
+        TEdit *divaEdit;
+        TLabel *Label18;
         TLabel *Label37;
+        TRadioGroup *spatialRadioGroup;
         TEdit *radiusSpatEdit;
         TEdit *meanSuccessAccEdit;
+        TEdit *meanSuccessDivAEdit;
         TLabel *Label7;
+        TLabel *Label9;
         TEdit *deltaTEdit;
         TLabel *Label19;
+        TEdit *meanPointsInSphereEdit;
+        TLabel *Label38;
         TEdit *c1Edit;
         TEdit *c2Edit;
         TLabel *Label39;
@@ -109,20 +124,37 @@ __published:	// IDE-managed Components
         TLabel *Label43;
         TEdit *meanEffectiveNumInTrajEdit;
         TLabel *Label44;
+        TLabel *Label45;
+        TEdit *radiusTempEdit;
+        TLabel *Label36;
+        TRadioGroup *interpolRadioGroup;
         TEdit *tolMaxVelEdit;
         TLabel *Label46;
-        TButton *risoETHBtn;
-        TOpenDialog *OpenDialog11;
-        TOpenDialog *OpenDialog12;
-        TOpenDialog *OpenDialog13;
-        TOpenDialog *OpenDialog14;
-        TButton *ETHRisoeBtn;
-        TRadioGroup *RadioGroup;
-        TButton *Button1;
-        TOpenDialog *OpenDialog15;
-        TOpenDialog *OpenDialog16;
-        TEdit *numEdit;
-        TLabel *Label9;
+        TEdit *meanSuccessCurvEdit;
+        TEdit *meanSuccessGradKEdit;
+        TEdit *curvEdit;
+        TEdit *gradKEdit;
+        TLabel *Label47;
+        TLabel *Label48;
+        TLabel *Label49;
+        TLabel *Label50;
+        TButton *gridBtn;
+        TLabel *Label51;
+        TLabel *Label52;
+        TLabel *Label53;
+        TLabel *Label54;
+        TLabel *Label55;
+        TLabel *Label56;
+        TEdit *deltaXEdit;
+        TEdit *deltaYEdit;
+        TEdit *deltaZEdit;
+        TEdit *numXEdit;
+        TEdit *numYEdit;
+        TEdit *numZEdit;
+        TLabel *Label57;
+        TButton *filterGridBtn;
+        TEdit *filtEdit;
+        TLabel *Label58;
         void __fastcall doPointsBtnClick(TObject *Sender);
         void __fastcall doGridBtnClick(TObject *Sender);
         void __fastcall FormMouseDown(TObject *Sender, TMouseButton Button,
@@ -143,9 +175,6 @@ __published:	// IDE-managed Components
         void __fastcall rotaBtnClick(TObject *Sender);
         void __fastcall gridBtnClick(TObject *Sender);
         void __fastcall filterGridBtnClick(TObject *Sender);
-        void __fastcall risoETHBtnClick(TObject *Sender);
-        void __fastcall ETHRisoeBtnClick(TObject *Sender);
-        void __fastcall Button1Click(TObject *Sender);
 
 private:	// User declarations
 public:		// User declarations
@@ -157,8 +186,8 @@ class TpointList : public TObject
 public:
 
     int  numPointInGrid;
-    double gridMem[5][10][4];
-    double interpolatedGrid[10][4];
+    double gridMem[50][5000][48];
+    double interpolatedGrid[5000][48];
     bool PathSet;
 
     double Re;
@@ -175,7 +204,6 @@ public:
     int count6;
     int count7;
     int count8;
-    int count9;
     double vel;
     double maxVel;
     double meanVel;
@@ -188,14 +216,8 @@ public:
     int forEffectiveMeanNumInTraj;
     int forTypicalPolyOrder;
     String baseName;
-    String baseNameTwo;
-    AnsiString baseName1;
-    AnsiString baseName2;
 
-    double point[200][1500][16];
-    bool occ[10000][1500];
-    int fast_search[200][12][12][12][100];
-
+    double point[200][3000][25];
     int numOfFrames;
     bool changed;
 
@@ -218,27 +240,95 @@ public:
 
     int arraySize;
     int maxRowIndex;
-
+    double m0  [300][20];
+    double m0T [20][300];
+    double m0T0[20][20];
     double A  [300][20];
     double AT [20][300];
     double ATA[20][20];
-    double B  [300][50];
-    double BT [50][300];
-    double BTB[50][50];
-    double C[300][50][11];
-    double CT [50][300];
-    double CTC[50][50];
-
+    double B  [300][20];
+    double BT [20][300];
+    double BTB[20][20];
+    double C[300][20];
+    double CT [20][300];
+    double CTC[20][20];
+    double D[300][20];
+    double DT [20][300];
+    double DTD[20][20];
     double Y  [300];
-
+    double Yu  [300];
+    double Yv  [300];
+    double Yw  [300];
+    double Yu0  [300];
+    double Yv0  [300];
+    double Yw0  [300];
+    double YuA  [300];
+    double YvA  [300];
+    double YwA  [300];
+    double YuC  [300];
+    double YvC  [300];
+    double YwC  [300];
+    double YuD  [300];
+    double YvD  [300];
+    double YwD  [300];
     double YuB  [300];
-    double y[53][300];
-    double YuC  [300][11];
+    double YvB  [300];
+    double YwB  [300];
+    double Yax  [300];
+    double Yay  [300];
+    double Yaz  [300];
+    double y0  [300];
+    double y1  [300];
+    double y2  [300];
+    double y3  [300];
+    double y4  [300];
+    double y5  [300];
+    double y6  [300];
+    double y7  [300];
+    double y8  [300];
+    double y9  [300];
+    double y10  [300];
+    double y11  [300];
+    double y12  [300];
+    double y13  [300];
+    double y14  [300];
+    double y15  [300];
+    double y16  [300];
+    double y17  [300];
+    double y18  [300];
+    double y19  [300];
+    double y20  [300];
+    double y21  [300];
+    double y22  [300];
+    double y23  [300];
+    double y24  [300];
+    double y25  [300];
+    double y26  [300];
+    double y27  [300];
+    double y28  [300];
+    double y29  [300];
+    double y30  [300];
+    double y31  [300];
+    double y32  [300];
+    double y33  [300];
+    double y34  [300];
+    double y35  [300];
+    double y36  [300];
+    double y37  [300];
+    double y38  [300];
+    double y39  [300];
+    double y40  [300];
+    double y41  [300];
 
-    double X  [53];
+    double X  [20];
+    double RES [21];
+    double m0TY[300];
     double ATY[300];
-    double BTY[300];
     double CTY[300];
+    double DTY[300];
+    double CY[300];
+    double Resid[300];
+    double BTY[300];
     
 
     double cov[300][2];
@@ -269,9 +359,9 @@ public:
     double Acorz[300];
 
     
-    int minDistArray[200][400];
+    int minDistArray[200][100];
 
-    double pointPerRadius[400][2]; //0.1mm resolution up to 10mm.
+    double pointPerRadius[100][2]; //0.1mm resolution up to 10mm.
     int dis[300];
     int dis0[300];
     int disA[300];
@@ -279,8 +369,9 @@ public:
     int disC[300];
     int disD[300];
     bool kriging;
-    double traj[300][65];
-    double trajec[1][1][1];//trajec[51][15000][32];
+    bool occ[6000][2000];
+    double traj[300][48];
+    double trajec[51][15000][32];
     double we[300];
     int minTrajLength;
     int numInTraj;
@@ -310,10 +401,16 @@ public:
     void __fastcall readAddedFile(int,int);
     void __fastcall doCubicSplines();
     void __fastcall doCubicSplinesTwenty(bool,int);
-
+    void __fastcall make0T(int,int);
+    void __fastcall make0T0(int,int);
+    void __fastcall make0TY(int,int,int);
+    bool __fastcall solve0(int,int);
     void __fastcall makeAT(int,int);
     void __fastcall makeATA(int,int);
     void __fastcall makeATY(int,int,int);
+    void __fastcall makeDT(int,int);
+    void __fastcall makeDTD(int,int);
+    void __fastcall makeDTY(int,int,int);
     bool __fastcall solve(int,int);
     void __fastcall makeBT(int,int);
     double __fastcall makeDuError(int);
@@ -330,23 +427,19 @@ public:
     double __fastcall makekResidErrorCube(int);
     void __fastcall makeBTB(int,int);
     void __fastcall makeBTY(int,int,int);
-    void __fastcall solveB(int,int);
-    bool __fastcall solveA(int,int);
-    void __fastcall makeCT(int,int,int);
-    void __fastcall makeCTC(int,int,int);
-    void __fastcall makeCTY(int,int,int,int);
+    bool __fastcall solveB(int,int);
+    void __fastcall makeCT(int,int);
+    void __fastcall makeCTC(int,int);
+    void __fastcall makeCTY(int,int,int);
     void __fastcall makeCXmY(int,int);
-    void __fastcall solveC(int,int);
+    bool __fastcall solveC(int,int);
     bool __fastcall solveD(int,int);
     void __fastcall writePTVtoFile(int);
     void __fastcall setPathAndFiles2();
     void __fastcall setPathAndFiles5();
-    void __fastcall setPathAndFiles7();
-    void __fastcall setPathAndFiles8();
-    void __fastcall setPathAndFiles9();
     void __fastcall readXUAPFile(int,bool,bool);
     void __fastcall readXUAPDFile(int,bool,bool);
-    void __fastcall readXUAPFileOld(int, bool);
+    void __fastcall readXUAPFileOld(int,bool);
     void __fastcall readGridFile(int,int);
     void __fastcall makeCor();
     void __fastcall makeStruct();
@@ -357,7 +450,9 @@ public:
     void __fastcall autoCorrelation();
     void __fastcall autoCorrelationFast();
     void __fastcall makeKrigingWeightsInnerLoop();
-    void __fastcall followTrajPointHarmonics(FILE *,int,int,bool);
+    void __fastcall doLinearInterp(FILE *);
+    void __fastcall followTrajPointLinQuadforAccDeriv(FILE *,int,int,bool);
+    void __fastcall followTrajPointLinQuadforAccDerivGrid(FILE *,int,int,bool);
     void __fastcall FilterGrid(FILE *,int);
     void __fastcall estimateAccuracy(int);
     void __fastcall setAllMatrixesToZero(int);
@@ -367,19 +462,10 @@ public:
     void __fastcall readTrajPointFile(int);
     void __fastcall makeSurfaces();
     void __fastcall makeLines();
+    void __fastcall reLink();
     void __fastcall makeFilesForCorrelations();
     void __fastcall getMean();
     void __fastcall writeXUADP(int);
-    void __fastcall readWriteRisoETH();
-    void __fastcall readWriteETHRiso();
-    void __fastcall writeBinary();
-
-    double __fastcall Sqrt(double x);
-    double __fastcall Power(double x,int n);
-    double __fastcall Rep(int j, int m, int n, int i, double x, double y, double z);
-    double __fastcall Imp(int j, int m, int n, int i, double x, double y, double z);
-    double __fastcall Req(int j, int m, int n, int i, double x, double y, double z);
-    double __fastcall Imq(int j, int m, int n, int i, double x, double y, double z);
 
     virtual __fastcall TpointList(void);   //constructor
 };

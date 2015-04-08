@@ -17,7 +17,6 @@ WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         try
         {
                  Application->Initialize();
-                 Application->Title = "";
                  Application->CreateForm(__classid(TmainForm), &mainForm);
                  Application->CreateForm(__classid(TparamForm), &paramForm);
                  Application->CreateForm(__classid(TgraphForm), &graphForm);

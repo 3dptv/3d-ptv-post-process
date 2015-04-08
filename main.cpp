@@ -6,13 +6,6 @@
 #include <stdio.h>
 #pragma hdrstop
 
-
-#include <io.h>
-#include <alloc.h>
-#include <fcntl.h>
-#include <process.h>
-#include <sys\stat.h>
-
 #include "main.h"
 #include "parameters.h"
 #include "graph.h"
@@ -27,8 +20,6 @@
 #pragma resource "*.dfm"
 TmainForm *mainForm;
 TpointList *pointList;
-
-static void sort(double minDistB[],int minDistBIndex[], int index);
 //---------------------------------------------------------------------------
 __fastcall TmainForm::TmainForm(TComponent* Owner)
         : TForm(Owner)
@@ -112,64 +103,6 @@ void __fastcall TpointList::setPathAndFiles2()
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::setPathAndFiles7()
-{
-
-     mainForm->OpenDialog11->Filter="position file (*.pt3)|*.pt3";
-     mainForm->OpenDialog11->Execute();
-     baseName1= mainForm->OpenDialog11->FileName;
-     PathSet=true;
-     mainForm->OpenDialog12->Filter="link file (*.pln)|*.pln";
-     mainForm->OpenDialog12->Execute();
-     baseName2= mainForm->OpenDialog12->FileName;
-     PathSet=true;
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-void __fastcall TpointList::setPathAndFiles8()
-{
-     AnsiString dummy;
-     mainForm->OpenDialog13->Filter="ptv_is files (ptv_is.*)|ptv_is.*";
-     mainForm->OpenDialog13->Execute();
-     dummy=ExtractFileExt(mainForm->OpenDialog13->FileName);
-     dummy=dummy.Delete(1, 1);
-     firstFile= StrToInt(dummy);
-     mainForm->OpenDialog14->Filter="ptv_is files (ptv_is.*)|ptv_is.*";
-     mainForm->OpenDialog14->Execute();
-     dummy=ExtractFileExt(mainForm->OpenDialog14->FileName);
-     dummy=dummy.Delete(1, 1);
-     lastFile= StrToInt(dummy);
-     int index=mainForm->OpenDialog13->FileName.LastDelimiter("." );
-     baseName= mainForm->OpenDialog13->FileName;
-     baseName=baseName.SetLength(index);
-     index=mainForm->OpenDialog14->FileName.LastDelimiter("." );
-     baseNameTwo= mainForm->OpenDialog14->FileName;
-     baseNameTwo=baseNameTwo.SetLength(index);
-     PathSet=true;
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-void __fastcall TpointList::setPathAndFiles9()
-{
-     AnsiString dummy;
-     mainForm->OpenDialog15->Filter="trajAcc files (trajAcc.*)|trajAcc.*";
-     mainForm->OpenDialog15->Execute();
-     dummy=ExtractFileExt(mainForm->OpenDialog15->FileName);
-     dummy=dummy.Delete(1, 1);
-     firstFile= StrToInt(dummy);
-     mainForm->OpenDialog16->Filter="trajAcc files (trajAcc.*)|trajAcc.*";
-     mainForm->OpenDialog16->Execute();
-     dummy=ExtractFileExt(mainForm->OpenDialog16->FileName);
-     dummy=dummy.Delete(1, 1);
-     lastFile= StrToInt(dummy);
-     int index=mainForm->OpenDialog15->FileName.LastDelimiter("." );
-     baseName= mainForm->OpenDialog15->FileName;
-     baseName=baseName.SetLength(index);
-     
-     PathSet=true;
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
 void __fastcall TpointList::setPathAndFiles5()
 {
      AnsiString dummy;
@@ -234,7 +167,7 @@ void __fastcall TpointList::readPTVFile(int n, int index)
     FILE *fpp;
     int numOfPoints;
     int left,right;
-    double x,y,z,rmsDist;
+    double x,y,z;
 
     AnsiString name;
 
@@ -263,14 +196,14 @@ void __fastcall TpointList::readPTVFile(int n, int index)
            fscanf (fpp, "%lf\0", &x);
            fscanf (fpp, "%lf\0", &y);
            fscanf (fpp, "%lf\0", &z);
-           rmsDist=0.005;
+
            point[index+10][i][0]=left+1;
            point[index+10][i][1]=right+1;
 
            point[index+10][i][2]=x*0.001;
            point[index+10][i][3]=y*0.001;
            point[index+10][i][4]=z*0.001;
-           point[index+10][i][15]=rmsDist;
+           point[index+10][i][15]=0.01;
       }
        fclose (fpp);
     }
@@ -381,16 +314,79 @@ void __fastcall TpointList::writeXUADP(int n)
 
 }
 //----------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::readXUAPFileOld(int n, bool shift)
+{
+    FILE *fpp;
+    int numOfPoints;
+    double left,right,x,y,z,u,v,w,ax,ay,az,dummy,cubic,quality;
 
+    AnsiString name;
+    const char *filename;
+    for(int i=0;i<5;i++){
+       if(n-2+i>firstFile-1 && n-2+i<lastFile+1){
+          if(i<4 && shift){
+             for(int j=0;j<point[i+1][0][0]+1;j++){
+                 for(int k=0;k<12;k++){
+                     point[i][j][k]=point[i+1][j][k];
+                 }
+             }
+          }
+          else{
+             numOfPoints=0;
+             name=baseName+IntToStr(n-2+i);
+             filename=name.c_str();
+             fpp = fopen(filename,"r");
+             while(!feof(fpp)){
+                numOfPoints++;
+                fscanf (fpp, "%lf\0", &left);
+                fscanf (fpp, "%lf\0", &right);
+                fscanf (fpp, "%lf\0", &dummy); //measured x
+                fscanf (fpp, "%lf\0", &dummy); //measured y
+                fscanf (fpp, "%lf\0", &dummy); //measured z
+                fscanf (fpp, "%lf\0", &x); //cubic spline x
+                fscanf (fpp, "%lf\0", &y); //cubic spline y
+                fscanf (fpp, "%lf\0", &z); //cubic spline z
+                fscanf (fpp, "%lf\0", &u);
+                fscanf (fpp, "%lf\0", &v);
+                fscanf (fpp, "%lf\0", &w);
+                fscanf (fpp, "%lf\0", &ax);
+                fscanf (fpp, "%lf\0", &ay);
+                fscanf (fpp, "%lf\0", &az);
+                fscanf (fpp, "%lf\0", &cubic);
+                //fscanf (fpp, "%lf\0", &quality);
+                point[i][numOfPoints][0]=left;
+                point[i][numOfPoints][1]=right;
+                point[i][numOfPoints][2]=x;
+                point[i][numOfPoints][3]=y;
+                point[i][numOfPoints][4]=z;
+                point[i][numOfPoints][5]=u;
+                point[i][numOfPoints][6]=v;
+                point[i][numOfPoints][7]=w;
+                point[i][numOfPoints][8]=ax;
+                point[i][numOfPoints][9]=ay;
+                point[i][numOfPoints][10]=az;
+                point[i][numOfPoints][11]=cubic;
+                //new quality
+                //point[i][numOfPoints][12]=quality;
+             }
+             fclose (fpp);
+             point[i][0][0]=numOfPoints++;
+          }
+
+       }
+       else{
+          point[i][0][0]=0;
+       }
+    }
+}
+//-----------------------------------------------------
 //---------------------------------------------------------------------------
 void __fastcall TpointList::readXUAPFile(int n, bool firstTime, bool estimate)
 {
     FILE *fpp;
     int numOfPoints;
-    double left,right,x,y,z,u,v,w,ax,ay,az,dummy,cubic;
-    int indx,indy,indz;
-    double radius=StrToFloat(mainForm->radiusSpatEdit->Text);
-    int numSearchBox=(int)(0.022/radius)+1;
+    double left,right,x,y,z,u,v,w,ax,ay,az,dummy,cubic,quality;
 
     AnsiString name;
     const char *filename;
@@ -429,7 +425,6 @@ void __fastcall TpointList::readXUAPFile(int n, bool firstTime, bool estimate)
           point[2][numOfPoints][9]=ay;
           point[2][numOfPoints][10]=az;
           point[2][numOfPoints][11]=cubic;
-          //if(cubic>0){point[2][numOfPoints][11]=1.;}
           //new quality
           //point[2][numOfPoints][12]=quality;
        }
@@ -438,21 +433,16 @@ void __fastcall TpointList::readXUAPFile(int n, bool firstTime, bool estimate)
     }
     else{
        for(int i=0;i<200;i++){
-          if(n-5+i>firstFile-1 && n-5+i<lastFile+1){
+          if(n-2+i>firstFile-1 && n-2+i<lastFile+1){
              if(i<numOfFrames-1 && !(firstTime)){
                 for(int j=0;j<point[i+1][0][0]+1;j++){
                     for(int k=0;k<16;k++){
                         point[i][j][k]=point[i+1][j][k];
                     }
                 }
-                for(int xx=0;xx<numSearchBox;xx++){for(int yy=0;yy<numSearchBox;yy++){for(int zz=0;zz<numSearchBox;zz++){
-                   for(int j=0;j<100;j++){
-                      fast_search[i][xx][yy][zz][j]=fast_search[i+1][xx][yy][zz][j];}}}}
              }
              else{
                 numOfPoints=0;
-                for(int xx=0;xx<numSearchBox;xx++){for(int yy=0;yy<numSearchBox;yy++){for(int zz=0;zz<numSearchBox;zz++){
-                   fast_search[i][xx][yy][zz][0]=0;}}}
                 name=baseName+IntToStr(n-2+i);
                 filename=name.c_str();
                 fpp = fopen(filename,"r");
@@ -486,19 +476,8 @@ void __fastcall TpointList::readXUAPFile(int n, bool firstTime, bool estimate)
                    point[i][numOfPoints][9]=ay;
                    point[i][numOfPoints][10]=az;
                    point[i][numOfPoints][11]=cubic;
-                   ////////////for fast search
-                   indx=(int)((x*1000+7.)/(1000*radius));
-                   indy=(int)((y*1000+7.)/(1000*radius));
-                   indz=(int)((z*1000+15.)/(1000*radius));
-                   if(indx<0){indx=0;}if(indx>numSearchBox-1){indx=numSearchBox-1;}
-                   if(indy<0){indy=0;}if(indy>numSearchBox-1){indy=numSearchBox-1;}
-                   if(indz<0){indz=0;}if(indz>numSearchBox-1){indz=numSearchBox-1;}
-                   if(cubic>0 && fast_search[i][indx][indy][indz][0]<99){
-                      fast_search[i][indx][indy][indz][0]=fast_search[i][indx][indy][indz][0]+1;
-                      fast_search[i][indx][indy][indz][fast_search[i][indx][indy][indz][0]]=numOfPoints;
-                   }
-                   //////////end for fast search
-
+                   //new quality
+                   //point[i][numOfPoints][12]=quality;
                 }
                 fclose (fpp);
                 point[i][0][0]=numOfPoints++;
@@ -537,9 +516,12 @@ void __fastcall TpointList::readGridFile(int t, int position)
     FILE *fpp;
     numPointInGrid=0;
     int numFields;
-
+    if(mainForm->interpolRadioGroup->ItemIndex==0){
        numFields=32;
-    
+    }
+    else{
+       numFields=47;
+    }
 
     double value;
 
@@ -911,11 +893,10 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
    int PLh=int((double)PL/2.);
    int nP=point[10][0][0];
    int ind[21];
+   bool PointIsOk[21];
    double tolerance=0.15;//StrToFloat(paramForm->toleranceEdit->Text);
    double tolMaxVel=StrToFloat(mainForm->tolMaxVelEdit->Text);
    double velocity;
-
-   double weight;
 
    deltaT=StrToFloat(mainForm->deltaTEdit->Text);
 
@@ -926,7 +907,7 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
    }
    else{
       start=number;
-      end=number;
+      end=number+1;
    }
 
    for(int i=start;i<end+1;i++){
@@ -962,7 +943,15 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
              ok=false;
           }
       }
-
+      //check for bad quality contributions and mark them!
+      for(int t=minIndex-10;t<maxIndex-10+1;t++){
+          PointIsOk[t+10]=true;
+          if(point[t+10][ind[t+10]][15]>tolerance){
+              PointIsOk[t+10]=false;
+              badCounter++;
+          }
+      }
+      //end check for bad quality check
       //first do for x and u, then do for a
       if(maxIndex-minIndex>2+badCounter && maxIndex>9+minLength && minIndex<11-minLength){ //ok (minIndex<10 && maxIndex>10){//
       //if(maxIndex-minIndex>2+badCounter ){ //ok (minIndex<10 && maxIndex>10){//
@@ -970,13 +959,13 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
           //x-Component
           setAllMatrixesToZero(4);
           for(int t=minIndex-10;t<maxIndex-10+1;t++){
-              weight     = point[t+10][ind[t+10]][15];
-              weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
-              A[t+10][0] = 1.*weight;
-              A[t+10][1] = (double)t*deltaT*weight;
-              A[t+10][2] = pow((double)t*deltaT,2.)*weight;
-              A[t+10][3] = pow((double)t*deltaT,3.)*weight;
-              y[0][t+10] = point[t+10][ind[t+10]][2]*weight;
+              if (PointIsOk[t+10]){
+                 A[t+10][0]=1.;
+                 A[t+10][1]=(double)t*deltaT;
+                 A[t+10][2]=pow((double)t*deltaT,2.);
+                 A[t+10][3]=pow((double)t*deltaT,3.);
+                 Y[t+10]=point[t+10][ind[t+10]][2];
+              }
           }
           makeAT(21,4);
           makeATA(21,4);
@@ -989,13 +978,13 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
           //y-Component
           setAllMatrixesToZero(4);
           for(int t=minIndex-10;t<maxIndex-10+1;t++){
-              weight     = point[t+10][ind[t+10]][15];
-              weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
-              A[t+10][0] = 1.*weight;
-              A[t+10][1] = (double)t*deltaT*weight;
-              A[t+10][2] = pow((double)t*deltaT,2.)*weight;
-              A[t+10][3] = pow((double)t*deltaT,3.)*weight;
-              y[0][t+10] = point[t+10][ind[t+10]][3]*weight;
+              if (PointIsOk[t+10]){
+                 A[t+10][0]=1.;
+                 A[t+10][1]=(double)t*deltaT;
+                 A[t+10][2]=pow((double)t*deltaT,2.);
+                 A[t+10][3]=pow((double)t*deltaT,3.);
+                 Y[t+10]=point[t+10][ind[t+10]][3];
+              }
           }
           makeAT(21,4);
           makeATA(21,4);
@@ -1008,13 +997,13 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
           //z-Component
           setAllMatrixesToZero(4);
           for(int t=minIndex-10;t<maxIndex-10+1;t++){
-              weight     = point[t+10][ind[t+10]][15];
-              weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
-              A[t+10][0] = 1.*weight;
-              A[t+10][1] = (double)t*deltaT*weight;
-              A[t+10][2] = pow((double)t*deltaT,2.)*weight;
-              A[t+10][3] = pow((double)t*deltaT,3.)*weight;
-              y[0][t+10] = point[t+10][ind[t+10]][4]*weight;
+              if (PointIsOk[t+10]){
+                 A[t+10][0]=1.;
+                 A[t+10][1]=(double)t*deltaT;
+                 A[t+10][2]=pow((double)t*deltaT,2.);
+                 A[t+10][3]=pow((double)t*deltaT,3.);
+                 Y[t+10]=point[t+10][ind[t+10]][4];
+              }
           }
           makeAT(21,4);
           makeATA(21,4);
@@ -1029,11 +1018,7 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
           if(velocity>tolMaxVel){
              point[10][i][14]=0;
           }
-          if(maxIndex<17){
-             point[10][i][14]=(maxIndex-10.)/7.+0.1;
-          }
       }
-      /*
       //now do for a
       if(maxIndex>10+PLacc){
          maxIndex=10+PLacc;
@@ -1102,7 +1087,6 @@ void __fastcall TpointList::doCubicSplinesTwenty(bool single,int number)
           point[10][i][13]=2.*X[2]; //(1./(deltaT*deltaT))*(point[11][ind[11]][4]-2.*point[10][ind[10]][4]+point[9][ind[9]][4]);//
           //max break!
       }
-      */
    }
 }
 //---------------------------------------------------------------------------
@@ -1186,7 +1170,7 @@ void __fastcall TpointList::estimateAccuracy(int t)
                centerZ=point[2][n][4];
 
                for(int d=0;d<p;d++){
-                  /*i=minDistIndex[d];
+                  i=minDistIndex[d];
                   dist=minDist[d];
                   disB[pCounterB]=(int)(dist*1000.+0.5);
                   dx=point[2][i][2]-centerX;
@@ -1225,7 +1209,7 @@ void __fastcall TpointList::estimateAccuracy(int t)
                   YuB[pCounterB]=point[2][i][5];
                   YvB[pCounterB]=point[2][i][6];
                   YwB[pCounterB]=point[2][i][7];
-                  pCounterB++; */
+                  pCounterB++;
                }
                //here we should be able to get the fluctuation energy whithin the sphere
                uMean=0;
@@ -1233,14 +1217,14 @@ void __fastcall TpointList::estimateAccuracy(int t)
                wMean=0;
                for(int d=0;d<pCounterB;d++){
                   uMean=uMean+YuB[d];
-                  //vMean=vMean+YvB[d];
-                  //wMean=wMean+YwB[d];
+                  vMean=vMean+YvB[d];
+                  wMean=wMean+YwB[d];
                }
                uMean=uMean/(double)pCounterB;
-               //vMean=vMean/(double)pCounterB;
-               //wMean=wMean/(double)pCounterB;
+               vMean=vMean/(double)pCounterB;
+               wMean=wMean/(double)pCounterB;
                kFluct=0;
-               /*for(int d=0;d<pCounterB;d++){
+               for(int d=0;d<pCounterB;d++){
                   kFluct=kFluct+pow((YuB[d]-uMean)*(YuB[d]-uMean)+(YvB[d]-vMean)*(YvB[d]-vMean)+(YwB[d]-wMean)*(YwB[d]-wMean),0.5);
                   //kFluct=kFluct+pow((YuB[d]-uMean)*(YuB[d]-uMean),0.5);
                }
@@ -1431,7 +1415,7 @@ void __fastcall TpointList::estimateAccuracy(int t)
                      kNoArrayDi[indexDi]=((indexCounterDi[indexDi]-1)*kNoArrayDi[indexDi]+(double)pCounterB)/indexCounterDi[indexDi];
                   }
                   //end of update global Energy curves!
-              }//end of solving*/
+              }//end of solving
              }//end if , does such a point exist at all?
             }//end of loop through closest points
          }//end of if (is it worthwhile to deal with point n?
@@ -1485,40 +1469,26 @@ void __fastcall TpointList::estimateAccuracy(int t)
      }//end of loop through points
 }
 //---------------------------------------------------------------------------
+
 //---------------------------------------------------------------------------
-void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startPoint, bool write)
+void __fastcall TpointList::followTrajPointLinQuadforAccDeriv(FILE *fpp, int t,int startPoint, bool write)
 {
-     int pCounterA,pCounterB,pCounterC[11], pCounter, rowIndex;
+     int pCounterB, pCounter, rowIndex;
      int startT, startP,ind;
      double dist,dx,dy,dz,dt;
      double centerX,centerY,centerZ;
-     double w1,w2,w3,s11,s12,s13,s22,s23,s33,vel,wsq,twosijsij,Q,NaX,NaY,NaZ,enstrophy;
-     double dix,diy,diz,refx,refy,refz,accCriteria,absdi,as11,as22,as33,diva;
+     double Liu[5],Liv[5],Liw[5],Liax[4],Liay[4],Liaz[4];
+     double Linx[4],Liny[4],Linz[4],Lik[4];
+     double w1,w2,w3,s11,s12,s13,s22,s23,s33,vel,wsq,twosijsij,Q;
+     double div,ref,divCriteria;
+     double diva,divaCriteria;
+     double dix,diy,diz,refx,refy,refz,accCriteria,absdi;
      double acx,acy,acz;
-     double quality;
-
-     double u_C,v_C,w_C,u_A,v_A,w_A;
+     double cnx,cny,cnz,curvGrad,curv,curvCriteria,Lx,Ly,Lz,gradCriteria;
 
      int time;
      double minDistB[200];
      int minDistBIndex[200];
-     double minDistC[200][11];
-     int minDistCIndex[200][11];
-
-     //////////////////////////////////////////
-     /////////////////////////////////////////
-     int pm=2;
-     int order=2;
-     ///////////////////////////////////////////
-     ////////////////////////////////////////////
-
-     int indexB;
-     int indexC[11];
-     double u_local[11],v_local[11],w_local[11];
-
-     double radius=StrToFloat(mainForm->radiusSpatEdit->Text);
-     int numSearchBox=(int)(0.022/radius)+1;
-
      bool contin;
 
      int rank;
@@ -1528,6 +1498,7 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
      double polyConst=StrToFloat(mainForm->polyConstEdit->Text);
 
      double maxRadiusSpat=StrToFloat(mainForm->radiusSpatEdit->Text);
+     double maxRadiusTemp=StrToFloat(mainForm->radiusTempEdit->Text);
      int minCounter;
 
      bool ok;
@@ -1537,31 +1508,17 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
      bool continueFuture;
      int step[5];
 
+     double weightDivU=StrToFloat(mainForm->divEdit->Text);
+     double weightAcc=StrToFloat(mainForm->accEdit->Text);
+     double weightDivA=StrToFloat(mainForm->divaEdit->Text);
+     double weightCurv=StrToFloat(mainForm->curvEdit->Text);
+     double weightGradK=StrToFloat(mainForm->gradKEdit->Text);
 
      double viscosity=StrToFloat(mainForm->viscEdit->Text);
      deltaT=StrToFloat(mainForm->deltaTEdit->Text);
      c1=StrToFloat(mainForm->c1Edit->Text);
      c2=StrToFloat(mainForm->c2Edit->Text);
 
-     double falseDist;
-     int indx,indy,indz;
-     double low_x,low_y,low_z,high_x,high_y,high_z;
-
-     double su=0.;
-     double x[53][300],pC[53][300];
-     double xp[300],yp[300],zp[300];
-     double up[300],vp[300],wp[300];
-     double axp[300],ayp[300],azp[300];
-     double dudxp[300],dudyp[300],dudzp[300];
-     double dvdxp[300],dvdyp[300],dvdzp[300];
-     double dwdxp[300],dwdyp[300],dwdzp[300];
-     double dudtp[300],dvdtp[300],dwdtp[300];
-     double daxdxp[300],daxdyp[300],daxdzp[300];
-     double daydxp[300],daydyp[300],daydzp[300];
-     double dazdxp[300],dazdyp[300],dazdzp[300];
-     double NXp[300],NYp[300],NZp[300];
-     double div,ref;
-     double vectorSq;
 
      if(write){
         if(t==pointList->firstFile){
@@ -1580,7 +1537,7 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
 
      if(write){
          start=1;
-         end=point[5][0][0]+1;
+         end=point[2][0][0]+1;
      }
      else{
          start=startPoint;
@@ -1589,486 +1546,724 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
 
      int n;
      for(int nn=start;nn<end;nn++){
-         time=5;
-         if(point[5][nn][11]>0. &&!(occ[t-pointList->firstFile][nn])) {
+         time=2;
+         if(point[2][nn][11]>0. && !(occ[t][nn]) ){
             startP=nn;
             ok=true;
             numInTraj=0;
             noDeriv=0;
             n=nn;
             while(ok){
-               occ[t-pointList->firstFile+time-5][n]=true;
+               occ[t+time-2][n]=true;
                //interpolieren und rausschreiben mit t,n (Zeit und Startpunkt)
                //%Da soll jetzt duidxj linear interpoliert werden
                //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                //%die nächsten Punkte zu Punkt x,y,z, finden
                count++;
-
+               if(mainForm->spatialRadioGroup->ItemIndex==0){
+                  setAllMatrixesToZero(4);
+               }
+               if(mainForm->spatialRadioGroup->ItemIndex==1){
+                  setAllMatrixesToZero(10);
+               }
+               if(mainForm->spatialRadioGroup->ItemIndex==2){
+                  setAllMatrixesToZero(20);
+               }
+               for(int i=0;i<arraySize;i++){
+                  dis0[i]=0.;
+                  disA[i]=0.;
+                  disB[i]=0.;
+                  disC[i]=0.;
+                  disD[i]=0.;
+               }
                centerX=point[time][n][2];
                centerY=point[time][n][3];
                centerZ=point[time][n][4];
 
-               //BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-               indexB=0;
-               falseDist=pow(pow(centerX,2.)+pow(centerY,2.)+pow(centerZ,2.),0.5);
-               indx=(int)((centerX*1000+7.)/(1000*radius));
-               indy=(int)((centerY*1000+7.)/(1000*radius));
-               indz=(int)((centerZ*1000+15.)/(1000*radius));
-               if(indx<0){indx=0;}if(indx>numSearchBox-1){indx=numSearchBox-1;}
-               if(indy<0){indy=0;}if(indy>numSearchBox-1){indy=numSearchBox-1;}
-               if(indz<0){indz=0;}if(indz>numSearchBox-1){indz=numSearchBox-1;}
-               low_x=indx-1;high_x=indx+1;
-               low_y=indy-1;high_y=indy+1;
-               low_z=indz-1;high_z=indz+1;
-               if(low_x<0){low_x=0;}if(low_y<0){low_y=0;}if(low_z<0){low_z=0;}
-               if(high_x>numSearchBox-1){high_x=numSearchBox-1;}if(high_y>numSearchBox-1){high_y=numSearchBox-1;}if(high_z>numSearchBox-1){high_z=numSearchBox-1;}
-               for(indx=low_x;indx<high_x+1;indx++){
-                   for(indy=low_y;indy<high_y+1;indy++){
-                       for(indz=low_z;indz<high_z+1;indz++){
-                           if(time<200){
-                              for(int i=1;i<fast_search[time][indx][indy][indz][0]+1;i++){
-                                  dist=pow( pow(point[time][fast_search[time][indx][indy][indz][i]][2]-centerX,2.)
-                                       +pow(point[time][fast_search[time][indx][indy][indz][i]][3]-centerY,2.)
-                                       +pow(point[time][fast_search[time][indx][indy][indz][i]][4]-centerZ,2.),0.5);
-                                  if(dist<maxRadiusSpat && !(dist==falseDist)){
-                                     minDistB[indexB]=dist;
-                                     minDistBIndex[indexB]=fast_search[time][indx][indy][indz][i];
-                                     indexB++;
-                                  }
-                              }
-                           }
-                       }
-                   }
+
+               for(int i=0;i<200+1;i++){
+                  minDistB[i]=1000+i;
+                  minDistBIndex[i]=1000+i;
                }
 
-               //CCCCCCCCCCCCCCCCCCCCC
-               for(int dt=-pm;dt<pm+1;dt++){
-                  indexC[dt+pm]=0;
-                  falseDist=pow(pow(centerX,2.)+pow(centerY,2.)+pow(centerZ,2.),0.5);
-                  indx=(int)((centerX*1000+7.)/(1000*radius));
-                  indy=(int)((centerY*1000+7.)/(1000*radius));
-                  indz=(int)((centerZ*1000+15.)/(1000*radius));
-                  if(indx<0){indx=0;}if(indx>numSearchBox-1){indx=numSearchBox-1;}
-                  if(indy<0){indy=0;}if(indy>numSearchBox-1){indy=numSearchBox-1;}
-                  if(indz<0){indz=0;}if(indz>numSearchBox-1){indz=numSearchBox-1;}
-                  low_x=indx-1;high_x=indx+1;
-                  low_y=indy-1;high_y=indy+1;
-                  low_z=indz-1;high_z=indz+1;
-                  if(low_x<0){low_x=0;}if(low_y<0){low_y=0;}if(low_z<0){low_z=0;}
-                  if(high_x>numSearchBox-1){high_x=numSearchBox-1;}if(high_y>numSearchBox-1){high_y=numSearchBox-1;}if(high_z>numSearchBox-1){high_z=numSearchBox-1;}
-                  for(indx=low_x;indx<high_x+1;indx++){
-                      for(indy=low_y;indy<high_y+1;indy++){
-                          for(indz=low_z;indz<high_z+1;indz++){
-                             if(time+dt<200){
-                                for(int i=1;i<fast_search[time+dt][indx][indy][indz][0]+1;i++){
-                                    dist=pow( pow(point[time+dt][fast_search[time+dt][indx][indy][indz][i]][2]-centerX,2.)
-                                             +pow(point[time+dt][fast_search[time+dt][indx][indy][indz][i]][3]-centerY,2.)
-                                             +pow(point[time+dt][fast_search[time+dt][indx][indy][indz][i]][4]-centerZ,2.),0.5);
-                                    if(dist<maxRadiusSpat && !(dist==falseDist)){
-                                        minDistC[indexC[dt+pm]][dt+pm]=dist;
-                                        minDistCIndex[indexC[dt+pm]][dt+pm]=fast_search[time+dt][indx][indy][indz][i];
-                                        indexC[dt+pm]++;
-                                    }
-                                }
-                             }
-                             else{
-                                int strange=1;
-                             }
-                          }
-                      }
+
+               //BBBBBBBBBBBBBBB
+               int index=0;
+               for(int i=1;i<point[time][0][0]+1;i++){
+                  dist=pow(pow(point[time][i][2]-centerX,2.)+pow(point[time][i][3]-centerY,2.)+pow(point[time][i][4]-centerZ,2.),0.5);
+                  if(dist<maxRadiusSpat){
+                      minDistB[index]=dist;
+                      minDistBIndex[index]=i;
+                      index++;
                   }
                }
-
 
                pCounterB=0;
+               pCounter=0;
                int i;
-               for(int pointInd=0;pointInd<indexB;pointInd++){
+               for(int pointInd=0;pointInd<index;pointInd++){
                   i=minDistBIndex[pointInd];
-                  if(point[time][i][11]>0. && pCounterB<300){
-                     dx=(point[time][i][2]-centerX)/(1.*maxRadiusSpat);
-                     dy=(point[time][i][3]-centerY)/(1.*maxRadiusSpat);
-                     dz=(point[time][i][4]-centerZ)/(1.*maxRadiusSpat);
-
-                     /// u,v,w component
-                     if(mainForm->RadioGroup->ItemIndex==0){
-                        for (int compo=1;compo<4;compo++){
-                           B[pCounterB][ 0]=Imp(1,1,0,compo,dx,dy,dz);//ip110
-                           B[pCounterB][ 1]=Imp(2,1,0,compo,dx,dy,dz);//ip210
-                           B[pCounterB][ 2]=Imp(2,2,0,compo,dx,dy,dz);//ip220
-
-                           B[pCounterB][ 3]=Imq(1,1,0,compo,dx,dy,dz);//iq110
-
-                           B[pCounterB][ 4]=Rep(1,0,0,compo,dx,dy,dz);//rp100
-                           B[pCounterB][ 5]=Rep(1,1,0,compo,dx,dy,dz);//rp110
-                           B[pCounterB][ 6]=Rep(2,0,0,compo,dx,dy,dz);//rp200
-                           B[pCounterB][ 7]=Rep(2,1,0,compo,dx,dy,dz);//rp210
-                           B[pCounterB][ 8]=Rep(2,2,0,compo,dx,dy,dz);//rp220
-
-                           B[pCounterB][ 9]=Req(1,0,0,compo,dx,dy,dz);//rq100
-                           B[pCounterB][10]=Req(1,1,0,compo,dx,dy,dz);//rq110
-
-                           YuB[pCounterB]=point[time][i][4+compo]/(1.*maxRadiusSpat);
-                           pCounterB++;
-                        }
+                  if(point[time][i][11]>0.){
+                     dist=pow(pow(point[time][i][2]-centerX,2.)+pow(point[time][i][3]-centerY,2.)+pow(point[time][i][4]-centerZ,2.),0.5);
+                     disB[pCounterB]=(int)(dist*1000.+0.5);
+                     dx=point[time][i][2]-centerX;
+                     dy=point[time][i][3]-centerY;
+                     dz=point[time][i][4]-centerZ;
+                     B[pCounterB][0]=1.;
+                     B[pCounterB][1]=dx;
+                     B[pCounterB][2]=dy;
+                     B[pCounterB][3]=dz;
+                     if(mainForm->spatialRadioGroup->ItemIndex==1){
+                        B[pCounterB][4]=dx*dx;
+                        B[pCounterB][5]=dy*dy;
+                        B[pCounterB][6]=dz*dz;
+                        B[pCounterB][7]=dx*dy;
+                        B[pCounterB][8]=dx*dz;
+                        B[pCounterB][9]=dy*dz;
                      }
-                     else{
-                        for (int compo=1;compo<4;compo++){
-                           B[pCounterB][ 0]=Imp(1,1,0,compo,dx,dy,dz);//ip110
-                           B[pCounterB][ 1]=Imp(1,1,1,compo,dx,dy,dz);//ip111
-                           B[pCounterB][ 2]=Imp(2,1,0,compo,dx,dy,dz);//ip210
-                           B[pCounterB][ 3]=Imp(2,1,1,compo,dx,dy,dz);//ip211
-                           B[pCounterB][ 4]=Imp(2,2,0,compo,dx,dy,dz);//ip220
-                           B[pCounterB][ 5]=Imp(2,2,1,compo,dx,dy,dz);//ip221
-                           B[pCounterB][ 6]=Imp(3,1,0,compo,dx,dy,dz);//ip310
-                           B[pCounterB][ 7]=Imp(3,2,0,compo,dx,dy,dz);//ip320
-                           B[pCounterB][ 8]=Imp(3,3,0,compo,dx,dy,dz);//ip330
-                           B[pCounterB][ 9]=Imp(4,1,0,compo,dx,dy,dz);//ip410
-                           B[pCounterB][10]=Imp(4,2,0,compo,dx,dy,dz);//ip420
-                           B[pCounterB][11]=Imp(4,3,0,compo,dx,dy,dz);//ip430
-                           B[pCounterB][12]=Imp(4,4,0,compo,dx,dy,dz);//ip440
-
-                           B[pCounterB][13]=Imq(1,1,0,compo,dx,dy,dz);//iq110
-                           B[pCounterB][14]=Imq(1,1,1,compo,dx,dy,dz);//iq111
-                           B[pCounterB][15]=Imq(2,1,0,compo,dx,dy,dz);//iq210
-                           B[pCounterB][16]=Imq(2,2,0,compo,dx,dy,dz);//iq220
-                           B[pCounterB][17]=Imq(3,1,0,compo,dx,dy,dz);//iq310
-                           B[pCounterB][18]=Imq(3,2,0,compo,dx,dy,dz);//iq320
-                           B[pCounterB][19]=Imq(3,3,0,compo,dx,dy,dz);//iq330
-
-                           B[pCounterB][20]=Rep(1,0,0,compo,dx,dy,dz);//rp100
-                           B[pCounterB][21]=Rep(1,0,1,compo,dx,dy,dz);//rp101
-                           B[pCounterB][22]=Rep(1,1,0,compo,dx,dy,dz);//rp110
-                           B[pCounterB][23]=Rep(1,1,1,compo,dx,dy,dz);//rp111
-                           B[pCounterB][24]=Rep(2,0,0,compo,dx,dy,dz);//rp200
-                           B[pCounterB][25]=Rep(2,0,1,compo,dx,dy,dz);//rp201
-                           B[pCounterB][26]=Rep(2,1,0,compo,dx,dy,dz);//rp210
-                           B[pCounterB][27]=Rep(2,1,1,compo,dx,dy,dz);//rp211
-                           B[pCounterB][28]=Rep(2,2,0,compo,dx,dy,dz);//rp220
-                           B[pCounterB][29]=Rep(2,2,1,compo,dx,dy,dz);//rp221
-
-                           B[pCounterB][30]=Rep(3,0,0,compo,dx,dy,dz);//rp300
-                           B[pCounterB][31]=Rep(3,1,0,compo,dx,dy,dz);//rp310
-                           B[pCounterB][32]=Rep(3,2,0,compo,dx,dy,dz);//rp320
-                           B[pCounterB][33]=Rep(3,3,0,compo,dx,dy,dz);//rp330
-                           B[pCounterB][34]=Rep(4,0,0,compo,dx,dy,dz);//rp400
-                           B[pCounterB][35]=Rep(4,1,0,compo,dx,dy,dz);//rp410
-                           B[pCounterB][36]=Rep(4,2,0,compo,dx,dy,dz);//rp420
-                           B[pCounterB][37]=Rep(4,3,0,compo,dx,dy,dz);//rp430
-                           B[pCounterB][38]=Rep(4,4,0,compo,dx,dy,dz);//rp440
-
-                           B[pCounterB][39]=Req(1,0,0,compo,dx,dy,dz);//rq100
-                           B[pCounterB][40]=Req(1,0,1,compo,dx,dy,dz);//rq101
-                           B[pCounterB][41]=Req(1,1,0,compo,dx,dy,dz);//rq110
-                           B[pCounterB][42]=Req(1,1,1,compo,dx,dy,dz);//rq111
-                           B[pCounterB][43]=Req(2,0,0,compo,dx,dy,dz);//rq200
-                           B[pCounterB][44]=Req(2,1,0,compo,dx,dy,dz);//rq210
-                           B[pCounterB][45]=Req(2,2,0,compo,dx,dy,dz);//rq220
-
-                           B[pCounterB][46]=Req(3,0,0,compo,dx,dy,dz);//rq300
-                           B[pCounterB][47]=Req(3,1,0,compo,dx,dy,dz);//rq310
-                           B[pCounterB][48]=Req(3,2,0,compo,dx,dy,dz);//rq320
-                           B[pCounterB][49]=Req(3,3,0,compo,dx,dy,dz);//rq330
-
-                           YuB[pCounterB]=point[time][i][4+compo]/(1.*maxRadiusSpat);
-                           pCounterB++;
-                        }
+                     if(mainForm->spatialRadioGroup->ItemIndex==2){
+                        B[pCounterB][4]=dx*dx;
+                        B[pCounterB][5]=dy*dy;
+                        B[pCounterB][6]=dz*dz;
+                        B[pCounterB][7]=dx*dy;
+                        B[pCounterB][8]=dx*dz;
+                        B[pCounterB][9]=dy*dz;
+                        B[pCounterB][10]=dx*dx*dx;
+                        B[pCounterB][11]=dy*dy*dy;
+                        B[pCounterB][12]=dz*dz*dz;
+                        B[pCounterB][13]=dx*dx*dy;
+                        B[pCounterB][14]=dx*dx*dz;
+                        B[pCounterB][15]=dy*dy*dx;
+                        B[pCounterB][16]=dy*dy*dz;
+                        B[pCounterB][17]=dz*dz*dx;
+                        B[pCounterB][18]=dz*dz*dy;
+                        B[pCounterB][19]=dx*dy*dz;
                      }
-                  }
-               }
-               for(int dt=-pm;dt<pm+1;dt++){
-                  pCounterC[dt+pm]=0;
-                  for(int pointInd=0;pointInd<indexC[dt+pm];pointInd++){
-                     i=minDistCIndex[pointInd][dt+pm];
-                     if(point[time+dt][i][11]>0. && pCounterC[dt+pm]<300){
-                        dx=(point[time+dt][i][2]-centerX)/(1.*maxRadiusSpat);
-                        dy=(point[time+dt][i][3]-centerY)/(1.*maxRadiusSpat);
-                        dz=(point[time+dt][i][4]-centerZ)/(1.*maxRadiusSpat);
+                     YuB[pCounterB]=point[time][i][5];
+                     YvB[pCounterB]=point[time][i][6];
+                     YwB[pCounterB]=point[time][i][7];
+                     y0[pCounterB]=point[time][i][8];
+                     y1[pCounterB]=point[time][i][9];
+                     y2[pCounterB]=point[time][i][10];
+                     ///curvature and grad kinetic energy stuff
+                     if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                        vel=pow( pow(point[time][i][5],2.)
+                                +pow(point[time][i][6],2.)
+                                +pow(point[time][i][7],2.),0.5);
+                        y3[pCounterB]=point[time][i][5]/vel;
+                        y4[pCounterB]=point[time][i][6]/vel;
+                        y5[pCounterB]=point[time][i][7]/vel;
+                        y6[pCounterB]=0.5*vel*vel;//kinetic energy
+                     }
+                     ///end urvature and grad kinetic energy stuff
+                     pCounterB++;
+                     if(minDistB[pointInd]<maxRadiusTemp){
+                     /////////for du/dt likeold scheme!
+                     /////////////////////////////////
+                     step[0]=0;
+                     step[1]=-1;
+                     step[2]=-2;
+                     step[3]= 1;
+                     step[4]= 2;
+                     ind=i;
+                     continuePast=true;
+                     continueFuture=true;
+                     for(int j=0;j<5;j++){
+                        if((j<3 && continuePast) || (j>2 && continueFuture)){
+                           dx=point[time+step[j]][ind][2]-centerX;
+                           dy=point[time+step[j]][ind][3]-centerY;
+                           dz=point[time+step[j]][ind][4]-centerZ;
+                           A[pCounter][0]=1.;
+                           A[pCounter][1]=dx;
+                           A[pCounter][2]=dy;
+                           A[pCounter][3]=dz;
+                           A[pCounter][4]=(double)step[j]*deltaT;
 
-                        /// u,v,w component
-                        if(mainForm->RadioGroup->ItemIndex==0){
-                           for (int compo=1;compo<4;compo++){
-                              C[pCounterC[dt+pm]][ 0][dt+pm]=Imp(1,1,0,compo,dx,dy,dz);//ip110
-                              C[pCounterC[dt+pm]][ 1][dt+pm]=Imp(2,1,0,compo,dx,dy,dz);//ip210
-                              C[pCounterC[dt+pm]][ 2][dt+pm]=Imp(2,2,0,compo,dx,dy,dz);//ip220
-
-                              C[pCounterC[dt+pm]][ 3][dt+pm]=Imq(1,1,0,compo,dx,dy,dz);//iq110
-
-                              C[pCounterC[dt+pm]][ 4][dt+pm]=Rep(1,0,0,compo,dx,dy,dz);//rp100
-                              C[pCounterC[dt+pm]][ 5][dt+pm]=Rep(1,1,0,compo,dx,dy,dz);//rp110
-                              C[pCounterC[dt+pm]][ 6][dt+pm]=Rep(2,0,0,compo,dx,dy,dz);//rp200
-                              C[pCounterC[dt+pm]][ 7][dt+pm]=Rep(2,1,0,compo,dx,dy,dz);//rp210
-                              C[pCounterC[dt+pm]][ 8][dt+pm]=Rep(2,2,0,compo,dx,dy,dz);//rp220
-
-                              C[pCounterC[dt+pm]][ 9][dt+pm]=Req(1,0,0,compo,dx,dy,dz);//rq100
-                              C[pCounterC[dt+pm]][10][dt+pm]=Req(1,1,0,compo,dx,dy,dz);//rq110
-
-                              YuC[pCounterC[dt+pm]][dt+pm]=point[time+dt][i][4+compo]/(1.*maxRadiusSpat);
-                              pCounterC[dt+pm]++;
+                           YuA[pCounter]=point[time+step[j]][ind][5];
+                           YvA[pCounter]=point[time+step[j]][ind][6];
+                           YwA[pCounter]=point[time+step[j]][ind][7];
+                           pCounter++;
+                           if(j<2){
+                              if(point[time+step[j]][ind][0]>0){
+                                 ind=point[time+step[j]][ind][0];
+                              }
+                              else{
+                                  continuePast=false;
+                              }
+                           }
+                           if(j>2){
+                              if(point[time+step[j]][ind][1]>0){
+                                 ind=point[time+step[j]][ind][1];
+                              }
+                              else{
+                                  continueFuture=false;
+                              }
                            }
                         }
-                        else{
-                           for (int compo=1;compo<4;compo++){
-                              C[pCounterC[dt+pm]][ 0][dt+pm]=Imp(1,1,0,compo,dx,dy,dz);//ip110
-                              C[pCounterC[dt+pm]][ 1][dt+pm]=Imp(1,1,1,compo,dx,dy,dz);//ip111
-                              C[pCounterC[dt+pm]][ 2][dt+pm]=Imp(2,1,0,compo,dx,dy,dz);//ip210
-                              C[pCounterC[dt+pm]][ 3][dt+pm]=Imp(2,1,1,compo,dx,dy,dz);//ip211
-                              C[pCounterC[dt+pm]][ 4][dt+pm]=Imp(2,2,0,compo,dx,dy,dz);//ip220
-                              C[pCounterC[dt+pm]][ 5][dt+pm]=Imp(2,2,1,compo,dx,dy,dz);//ip221
-                              C[pCounterC[dt+pm]][ 6][dt+pm]=Imp(3,1,0,compo,dx,dy,dz);//ip310
-                              C[pCounterC[dt+pm]][ 7][dt+pm]=Imp(3,2,0,compo,dx,dy,dz);//ip320
-                              C[pCounterC[dt+pm]][ 8][dt+pm]=Imp(3,3,0,compo,dx,dy,dz);//ip330
-                              C[pCounterC[dt+pm]][ 9][dt+pm]=Imp(4,1,0,compo,dx,dy,dz);//ip410
-                              C[pCounterC[dt+pm]][10][dt+pm]=Imp(4,2,0,compo,dx,dy,dz);//ip420
-                              C[pCounterC[dt+pm]][11][dt+pm]=Imp(4,3,0,compo,dx,dy,dz);//ip430
-                              C[pCounterC[dt+pm]][12][dt+pm]=Imp(4,4,0,compo,dx,dy,dz);//ip440
-
-                              C[pCounterC[dt+pm]][13][dt+pm]=Imq(1,1,0,compo,dx,dy,dz);//iq110
-                              C[pCounterC[dt+pm]][14][dt+pm]=Imq(1,1,1,compo,dx,dy,dz);//iq111
-                              C[pCounterC[dt+pm]][15][dt+pm]=Imq(2,1,0,compo,dx,dy,dz);//iq210
-                              C[pCounterC[dt+pm]][16][dt+pm]=Imq(2,2,0,compo,dx,dy,dz);//iq220
-                              C[pCounterC[dt+pm]][17][dt+pm]=Imq(3,1,0,compo,dx,dy,dz);//iq310
-                              C[pCounterC[dt+pm]][18][dt+pm]=Imq(3,2,0,compo,dx,dy,dz);//iq320
-                              C[pCounterC[dt+pm]][19][dt+pm]=Imq(3,3,0,compo,dx,dy,dz);//iq330
-
-                              C[pCounterC[dt+pm]][20][dt+pm]=Rep(1,0,0,compo,dx,dy,dz);//rp100
-                              C[pCounterC[dt+pm]][21][dt+pm]=Rep(1,0,1,compo,dx,dy,dz);//rp101
-                              C[pCounterC[dt+pm]][22][dt+pm]=Rep(1,1,0,compo,dx,dy,dz);//rp110
-                              C[pCounterC[dt+pm]][23][dt+pm]=Rep(1,1,1,compo,dx,dy,dz);//rp111
-                              C[pCounterC[dt+pm]][24][dt+pm]=Rep(2,0,0,compo,dx,dy,dz);//rp200
-                              C[pCounterC[dt+pm]][25][dt+pm]=Rep(2,0,1,compo,dx,dy,dz);//rp201
-                              C[pCounterC[dt+pm]][26][dt+pm]=Rep(2,1,0,compo,dx,dy,dz);//rp210
-                              C[pCounterC[dt+pm]][27][dt+pm]=Rep(2,1,1,compo,dx,dy,dz);//rp211
-                              C[pCounterC[dt+pm]][28][dt+pm]=Rep(2,2,0,compo,dx,dy,dz);//rp220
-                              C[pCounterC[dt+pm]][29][dt+pm]=Rep(2,2,1,compo,dx,dy,dz);//rp221
-
-                              C[pCounterC[dt+pm]][30][dt+pm]=Rep(3,0,0,compo,dx,dy,dz);//rp300
-                              C[pCounterC[dt+pm]][31][dt+pm]=Rep(3,1,0,compo,dx,dy,dz);//rp310
-                              C[pCounterC[dt+pm]][32][dt+pm]=Rep(3,2,0,compo,dx,dy,dz);//rp320
-                              C[pCounterC[dt+pm]][33][dt+pm]=Rep(3,3,0,compo,dx,dy,dz);//rp330
-                              C[pCounterC[dt+pm]][34][dt+pm]=Rep(4,0,0,compo,dx,dy,dz);//rp400
-                              C[pCounterC[dt+pm]][35][dt+pm]=Rep(4,1,0,compo,dx,dy,dz);//rp410
-                              C[pCounterC[dt+pm]][36][dt+pm]=Rep(4,2,0,compo,dx,dy,dz);//rp420
-                              C[pCounterC[dt+pm]][37][dt+pm]=Rep(4,3,0,compo,dx,dy,dz);//rp430
-                              C[pCounterC[dt+pm]][38][dt+pm]=Rep(4,4,0,compo,dx,dy,dz);//rp440
-
-                              C[pCounterC[dt+pm]][39][dt+pm]=Req(1,0,0,compo,dx,dy,dz);//rq100
-                              C[pCounterC[dt+pm]][40][dt+pm]=Req(1,0,1,compo,dx,dy,dz);//rq101
-                              C[pCounterC[dt+pm]][41][dt+pm]=Req(1,1,0,compo,dx,dy,dz);//rq110
-                              C[pCounterC[dt+pm]][42][dt+pm]=Req(1,1,1,compo,dx,dy,dz);//rq111
-                              C[pCounterC[dt+pm]][43][dt+pm]=Req(2,0,0,compo,dx,dy,dz);//rq200
-                              C[pCounterC[dt+pm]][44][dt+pm]=Req(2,1,0,compo,dx,dy,dz);//rq210
-                              C[pCounterC[dt+pm]][45][dt+pm]=Req(2,2,0,compo,dx,dy,dz);//rq220
-
-                              C[pCounterC[dt+pm]][46][dt+pm]=Req(3,0,0,compo,dx,dy,dz);//rq300
-                              C[pCounterC[dt+pm]][47][dt+pm]=Req(3,1,0,compo,dx,dy,dz);//rq310
-                              C[pCounterC[dt+pm]][48][dt+pm]=Req(3,2,0,compo,dx,dy,dz);//rq320
-                              C[pCounterC[dt+pm]][49][dt+pm]=Req(3,3,0,compo,dx,dy,dz);//rq330
-
-                              YuC[pCounterC[dt+pm]][dt+pm]=point[time+dt][i][4+compo]/(1.*maxRadiusSpat);
-                              pCounterC[dt+pm]++;
+                        if(j==2){
+                           ind=i;
+                           step[2]=0;
+                           if(point[time+step[j]][ind][1]>0){
+                              ind=point[time+step[j]][ind][1];
+                           }
+                           else{
+                              continueFuture=false;
                            }
                         }
+                     }
+                     /////////////////////////////////
                      }
                   }
                }
 
+               
                meanPointsInSphereB=(meanPointsInSphereB*(double)(count-1)+(double)pCounterB)/(double)count;
-               meanPointsInSphere =(meanPointsInSphere *(double)(count-1)+(double)pCounterC[0])/(double)count;
-               if(mainForm->RadioGroup->ItemIndex==0){
-                  minCounter=5;
+               meanPointsInSphere =(meanPointsInSphere *(double)(count-1)+(double)pCounter )/(double)count;
+               if(mainForm->spatialRadioGroup->ItemIndex==0){
+                  minCounter=3;
                }
-               else{
-                  minCounter=50;
+               if(mainForm->spatialRadioGroup->ItemIndex==1){
+                  minCounter=9;
                }
+               if(mainForm->spatialRadioGroup->ItemIndex==2){
+                  minCounter=19;
+               }
+               if(pCounterB>minCounter ){ // %jetzt wird endlich Punkt1 interpoliert
+                  //%correct x,y,z with center of interpolation!
 
-               if(pCounterB>minCounter){
-                  if(mainForm->RadioGroup->ItemIndex==0){
-                     makeBT(pCounterB,11);
-                     makeBTB(pCounterB,11);
-                     makeBTY(pCounterB,11,1);
-                     solveB(pCounterB,11);
-                     for(int j=0;j<11;j++){
-                        traj[numInTraj][j]=X[j];
-                     }
+                  contin=true;
+                  if(mainForm->spatialRadioGroup->ItemIndex==0){
+                     makeBT(pCounterB,4);
+                     makeBTB(pCounterB,4);
+                     makeBTY(pCounterB,4,1);
+                     contin=solveB(pCounterB,4);
                   }
-                  else{
-                     makeBT(pCounterB,50);
-                     makeBTB(pCounterB,50);
-                     makeBTY(pCounterB,50,1);
-                     solveB(pCounterB,50);
-                     for(int j=0;j<50;j++){
-                        traj[numInTraj][j]=X[j];
-                     }
+                  if(mainForm->spatialRadioGroup->ItemIndex==1){
+                     makeBT(pCounterB,10);
+                     makeBTB(pCounterB,10);
+                     makeBTY(pCounterB,10,1);
+                     contin=solveB(pCounterB,10);
                   }
-
-                  //here we put the local derivatives.
-                  for(int dt=-pm;dt<pm+1;dt++){
-                      if(pCounterC[dt+pm]>minCounter){
-                         if(mainForm->RadioGroup->ItemIndex==0){
-                            makeCT(pCounterC[dt+pm],11,dt+pm);
-                            makeCTC(pCounterC[dt+pm],11,dt+pm);
-                            makeCTY(pCounterC[dt+pm],11,1,dt+pm);
-                            solveC(pCounterC[dt+pm],11);
-                            u_local[dt+pm]=(-0.3454941494713355*X[5])*maxRadiusSpat;
-                            v_local[dt+pm]=(-0.3454941494713355*X[0])*maxRadiusSpat;
-                            w_local[dt+pm]=( 0.4886025119029199*X[4])*maxRadiusSpat;
-                         }
-                         else{
-                            makeCT(pCounterC[dt+pm],50,dt+pm);
-                            makeCTC(pCounterC[dt+pm],50,dt+pm);
-                            makeCTY(pCounterC[dt+pm],50,1,dt+pm);
-                            solveC(pCounterC[dt+pm],50);
-                            u_local[dt+pm]=(-0.24430125595145996*(1.4142135623730951*X[22] + 2.6457513110645907*X[23]))*maxRadiusSpat;
-                            v_local[dt+pm]=(-0.24430125595145996*(1.4142135623730951*X[0] + 2.6457513110645907*X[1]))*maxRadiusSpat;
-                            w_local[dt+pm]=( 0.24430125595145996*(2.*X[20] + 3.7416573867739413*X[21]))*maxRadiusSpat;
-                         }
-                      }
+                  if(mainForm->spatialRadioGroup->ItemIndex==2){
+                     makeBT(pCounterB,20);
+                     makeBTB(pCounterB,20);
+                     makeBTY(pCounterB,20,1);
+                     contin=solveB(pCounterB,20);
                   }
-                  for(int j=-pm;j<pm+1;j++){
-                     for(int ij=0;ij<order;ij++){////////////ORDER
-                        if(u_local[j+pm]==0){
-                           A[j+pm][ij]=0.;
-                        }
-                        else{
-                           A[j+pm][ij]=pow((double)j*deltaT+0.000000001,(double)(ij));
-                        }
-                     }
-                     if(u_local[j+pm]==0){
-                        y[0][j+pm]=0;
-                        y[1][j+pm]=0;
-                        y[2][j+pm]=0;
+                  if(contin){
+                     Liu[0]=point[time][n][5];//[8];
+                     Liu[1]=X[1];
+                     Liu[2]=X[2];
+                     Liu[3]=X[3];
+                     if(pCounter>4){
+                        makeAT(pCounter,5);
+                        makeATA(pCounter,5);
+                        makeATY(pCounter,5,1);
+                        solve(pCounter,5);
+                        Liu[4]=X[4];
                      }
                      else{
-                        y[0][j+pm]=u_local[j+pm];
-                        y[1][j+pm]=v_local[j+pm];
-                        y[2][j+pm]=w_local[j+pm];
+                        contin=false;
+                     }
+                     if(contin){
+                        if(mainForm->spatialRadioGroup->ItemIndex==0){
+                           makeBT(pCounterB,4);
+                           makeBTB(pCounterB,4);
+                           makeBTY(pCounterB,4,2);
+                           contin=solveB(pCounterB,4);
+                        }
+                        if(mainForm->spatialRadioGroup->ItemIndex==1){
+                           makeBT(pCounterB,10);
+                           makeBTB(pCounterB,10);
+                           makeBTY(pCounterB,10,2);
+                           contin=solveB(pCounterB,10);
+                        }
+                        if(mainForm->spatialRadioGroup->ItemIndex==2){
+                           makeBT(pCounterB,20);
+                           makeBTB(pCounterB,20);
+                           makeBTY(pCounterB,20,2);
+                           contin=solveB(pCounterB,20);
+                        }
+                        if(contin){
+                           Liv[0]=point[time][n][6];//[9];
+                           Liv[1]=X[1];
+                           Liv[2]=X[2];
+                           Liv[3]=X[3];
+                           if(pCounter>4){
+                              makeAT(pCounter,5);
+                              makeATA(pCounter,5);
+                              makeATY(pCounter,5,2);
+                              solve(pCounter,5);
+                              Liv[4]=X[4];
+                           }
+                           else{
+                              contin=false;
+                           }
+                           if(contin){
+                              if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                 makeBT(pCounterB,4);
+                                 makeBTB(pCounterB,4);
+                                 makeBTY(pCounterB,4,3);
+                                 contin=solveB(pCounterB,4);
+                              }
+                              if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                 makeBT(pCounterB,10);
+                                 makeBTB(pCounterB,10);
+                                 makeBTY(pCounterB,10,3);
+                                 contin=solveB(pCounterB,10);
+                              }
+                              if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                 makeBT(pCounterB,20);
+                                 makeBTB(pCounterB,20);
+                                 makeBTY(pCounterB,20,3);
+                                 contin=solveB(pCounterB,20);
+                              }
+                              if(contin){
+                                 Liw[0]=point[time][n][7];//[10];
+                                 Liw[1]=X[1];
+                                 Liw[2]=X[2];
+                                 Liw[3]=X[3];
+                                 if(pCounter>4){
+                                    makeAT(pCounter,5);
+                                    makeATA(pCounter,5);
+                                    makeATY(pCounter,5,3);
+                                    solve(pCounter,5);
+                                    Liw[4]=X[4];
+                                 }
+                                 else{
+                                    contin=false;
+                                 }
+                                 if(contin){
+                                    if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                       makeBT(pCounterB,4);
+                                       makeBTB(pCounterB,4);
+                                       makeBTY(pCounterB,4,4);
+                                       contin=solveB(pCounterB,4);
+                                    }
+                                    if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                       makeBT(pCounterB,10);
+                                       makeBTB(pCounterB,10);
+                                       makeBTY(pCounterB,10,4);
+                                       contin=solveB(pCounterB,10);
+                                    }
+                                    if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                       makeBT(pCounterB,20);
+                                       makeBTB(pCounterB,20);
+                                       makeBTY(pCounterB,20,4);
+                                       contin=solveB(pCounterB,20);
+                                    }
+                                    if(contin){
+                                       Liax[0]=X[0];//point[time][n][8];
+                                       Liax[1]=X[1];
+                                       Liax[2]=X[2];
+                                       Liax[3]=X[3];
+                                       if(contin){
+                                          if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                             makeBT(pCounterB,4);
+                                             makeBTB(pCounterB,4);
+                                             makeBTY(pCounterB,4,5);
+                                             contin=solveB(pCounterB,4);
+                                          }
+                                          if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                             makeBT(pCounterB,10);
+                                             makeBTB(pCounterB,10);
+                                             makeBTY(pCounterB,10,5);
+                                             contin=solveB(pCounterB,10);
+                                          }
+                                          if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                             makeBT(pCounterB,20);
+                                             makeBTB(pCounterB,20);
+                                             makeBTY(pCounterB,20,5);
+                                             contin=solveB(pCounterB,20);
+                                          }
+                                          if(contin){
+                                             Liay[0]=X[0];//point[time][n][9];
+                                             Liay[1]=X[1];
+                                             Liay[2]=X[2];
+                                             Liay[3]=X[3];
+                                             if(contin){
+                                                if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                   makeBT(pCounterB,4);
+                                                   makeBTB(pCounterB,4);
+                                                   makeBTY(pCounterB,4,6);
+                                                   contin=solveB(pCounterB,4);
+                                                }
+                                                if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                   makeBT(pCounterB,10);
+                                                   makeBTB(pCounterB,10);
+                                                   makeBTY(pCounterB,10,6);
+                                                   contin=solveB(pCounterB,10);
+                                                }
+                                                if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                   makeBT(pCounterB,20);
+                                                   makeBTB(pCounterB,20);
+                                                   makeBTY(pCounterB,20,6);
+                                                   contin=solveB(pCounterB,20);
+                                                }
+                                                if(contin){
+                                                   Liaz[0]=X[0];//point[time][n][10];
+                                                   Liaz[1]=X[1];
+                                                   Liaz[2]=X[2];
+                                                   Liaz[3]=X[3];
+                                                   if(contin){
+                                                      ///curvature and grad kinetic energy stuff
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==1){
+                                                         //nx
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,7);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,7);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,7);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         vel=pow( pow(point[time][n][5],2.)
+                                                                 +pow(point[time][n][6],2.)
+                                                                 +pow(point[time][n][7],2.),0.5);
+                                                         Linx[0]=point[time][n][5]/vel;
+                                                         Linx[1]=X[1];
+                                                         Linx[2]=X[2];
+                                                         Linx[3]=X[3];
+                                                         //ny
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,8);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,8);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,8);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         vel=pow( pow(point[time][n][5],2.)
+                                                                 +pow(point[time][n][6],2.)
+                                                                 +pow(point[time][n][7],2.),0.5);
+                                                         Liny[0]=point[time][n][6]/vel;
+                                                         Liny[1]=X[1];
+                                                         Liny[2]=X[2];
+                                                         Liny[3]=X[3];
+                                                         //nz
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,9);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,9);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,9);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         vel=pow( pow(point[time][n][5],2.)
+                                                                 +pow(point[time][n][6],2.)
+                                                                 +pow(point[time][n][7],2.),0.5);
+                                                         Linz[0]=point[time][n][7]/vel;
+                                                         Linz[1]=X[1];
+                                                         Linz[2]=X[2];
+                                                         Linz[3]=X[3];
+                                                         //grad k
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,10);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,10);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,10);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         vel=pow( pow(Liu[0],2.)
+                                                                 +pow(Liv[0],2.)
+                                                                 +pow(Liw[0],2.),0.5);
+                                                         Lik[0]=0.5*vel*vel;
+                                                         Lik[1]=X[1];
+                                                         Lik[2]=X[2];
+                                                         Lik[3]=X[3];
+                                                      }
+                                                      ///end urvature and grad kinetic energy stuff
+                                                      traj[numInTraj][ 0]=point[time][n][2];//x
+                                                      traj[numInTraj][ 1]=point[time][n][3];//y
+                                                      traj[numInTraj][ 2]=point[time][n][4];//z
+                                                      traj[numInTraj][ 3]=Liu[0]; //u
+                                                      traj[numInTraj][ 4]=Liv[0]; //v
+                                                      traj[numInTraj][ 5]=Liw[0]; //w
+                                                      traj[numInTraj][ 6]=Liu[1]; //du/dx
+                                                      traj[numInTraj][ 7]=Liu[2]; //du/dy
+                                                      traj[numInTraj][ 8]=Liu[3]; //du/dz
+                                                      traj[numInTraj][ 9]=Liv[1]; //dv/dx
+                                                      traj[numInTraj][10]=Liv[2]; //dv/dy
+                                                      traj[numInTraj][11]=Liv[3]; //dv/dz
+                                                      traj[numInTraj][12]=Liw[1]; //dw/dx
+                                                      traj[numInTraj][13]=Liw[2]; //dw/dy
+                                                      traj[numInTraj][14]=Liw[3]; //dw/dz
+                                                      traj[numInTraj][15]=Liu[4]; //du/dt
+                                                      traj[numInTraj][16]=Liv[4]; //dv/dt
+                                                      traj[numInTraj][17]=Liw[4]; //dw/dt
+                                                      traj[numInTraj][18]=Liax[0]; //ax
+                                                      traj[numInTraj][19]=Liay[0]; //ay
+                                                      traj[numInTraj][20]=Liaz[0]; //az
+                                                      traj[numInTraj][21]=Liax[1]; //da_x/dx
+                                                      traj[numInTraj][22]=Liax[2]; //da_x/dy
+                                                      traj[numInTraj][23]=Liax[3]; //da_x/dz
+                                                      traj[numInTraj][24]=Liay[1]; //da_y/dx
+                                                      traj[numInTraj][25]=Liay[2]; //da_y/dy
+                                                      traj[numInTraj][26]=Liay[3]; //da_y/dz
+                                                      traj[numInTraj][27]=Liaz[1]; //da_z/dx
+                                                      traj[numInTraj][28]=Liaz[2]; //da_z/dy
+                                                      traj[numInTraj][29]=Liaz[3]; //da_z/dz
+
+
+                                                      //%omega,strain,div,ref
+                                                      w1=Liw[2]-Liv[3];
+                                                      w2=Liu[3]-Liw[1];
+                                                      w3=Liv[1]-Liu[2];
+                                                      s11=Liu[1];
+                                                      s22=Liv[2];
+                                                      s33=Liw[3];
+                                                      s12=0.5*(Liu[2]+Liv[1]);
+                                                      s13=0.5*(Liu[3]+Liw[1]);
+                                                      s23=0.5*(Liv[3]+Liw[2]);
+                                                      //for weighting divergence
+                                                      div=fabs(s11+s22+s33);
+                                                      ref=fabs(s11)+fabs(s22)+fabs(s33);
+                                                      if(ref>0){
+                                                         divCriteria=div/ref;
+                                                      }
+                                                      else{
+                                                         divCriteria=0.95;
+                                                      }
+                                                      //for weighting acceleration
+                                                      //acceleration quality
+                                                      dix=Liax[0]-Liu[4]-Liu[0]*Liu[1]-Liv[0]*Liu[2]-Liw[0]*Liu[3];
+                                                      diy=Liay[0]-Liv[4]-Liu[0]*Liv[1]-Liv[0]*Liv[2]-Liw[0]*Liv[3];
+                                                      diz=Liaz[0]-Liw[4]-Liu[0]*Liw[1]-Liv[0]*Liw[2]-Liw[0]*Liw[3];
+                                                      absdi=pow(dix*dix+diy*diy+diz*diz,0.5);
+                                                      refx= fabs(Liax[0])
+                                                           +fabs(Liu[4])
+                                                           +fabs( Liu[0]*Liu[1]
+                                                                 +Liv[0]*Liu[2]
+                                                                 +Liw[0]*Liu[3]);
+                                                      refy= fabs(Liay[0])
+                                                           +fabs(Liv[4])
+                                                           +fabs( Liu[0]*Liv[1]
+                                                                 +Liv[0]*Liv[2]
+                                                                 +Liw[0]*Liv[3]);
+                                                      refz= fabs(Liaz[0])
+                                                           +fabs(Liw[4])
+                                                           +fabs( Liu[0]*Liw[1]
+                                                                 +Liv[0]*Liw[2]
+                                                                 +Liw[0]*Liw[3]);
+                                                      if(refx>0 && refy>0 && refz>0){
+                                                         accCriteria=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz); //20.*absdi;//
+                                                      }
+                                                      else{
+                                                         accCriteria=0.95;
+                                                      }
+                                                      //here we make also a weighting according to diva=4Q
+                                                      wsq=w1*w1+w2*w2+w3*w3;
+                                                      twosijsij=2.*(s11*s11+s22*s22+s33*s33
+                                                                    +2.*(s12*s12+s13*s13+s23*s23)
+                                                                   );
+                                                      Q=(1./4.)*(wsq-twosijsij);
+                                                      diva=Liax[1]+Liay[2]+Liaz[3];
+                                                      if(fabs(diva)+fabs(4*Q)>0){
+                                                         divaCriteria=fabs(diva+4*Q)/(fabs(diva)+fabs(4*Q));
+                                                      }
+                                                      else{
+                                                         divaCriteria=0.95;
+                                                      }
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==0){
+                                                         traj[numInTraj][30]= weightDivU*divCriteria
+                                                                             +weightAcc*accCriteria
+                                                                             +weightDivA*divaCriteria;
+                                                      }
+                                                      if(traj[numInTraj][30]>0.95){
+                                                         traj[numInTraj][30]=0.95;
+                                                      }
+                                                      traj[numInTraj][31]=n;
+                                                      ///curvature and grad kinetic energy stuff
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==1){
+                                                          ///traj[numInTraj][33..47]
+                                                          traj[numInTraj][33]=Linx[0]; //nx
+                                                          traj[numInTraj][34]=Liny[0]; //ny
+                                                          traj[numInTraj][35]=Linz[0]; //nz
+                                                          traj[numInTraj][36]=Linx[1]; //dn_x/dx
+                                                          traj[numInTraj][37]=Linx[2]; //dn_x/dy
+                                                          traj[numInTraj][38]=Linx[3]; //dn_x/dz
+                                                          traj[numInTraj][39]=Liny[1]; //dn_y/dx
+                                                          traj[numInTraj][40]=Liny[2]; //dn_y/dy
+                                                          traj[numInTraj][41]=Liny[3]; //dn_y/dz
+                                                          traj[numInTraj][42]=Linz[1]; //dn_z/dx
+                                                          traj[numInTraj][43]=Linz[2]; //dn_z/dy
+                                                          traj[numInTraj][44]=Linz[3]; //dn_z/dz
+                                                          traj[numInTraj][45]=Lik[1]; //dk/dx
+                                                          traj[numInTraj][46]=Lik[2]; //dk/dy
+                                                          traj[numInTraj][47]=Lik[3]; //dk/dz
+                                                          //weighting according curvature check
+                                                          cnx=Linx[0]*Linx[1]+Liny[0]*Linx[2]+Linz[0]*Linx[3];
+                                                          cny=Linx[0]*Liny[1]+Liny[0]*Liny[2]+Linz[0]*Liny[3];
+                                                          cnz=Linx[0]*Linz[1]+Liny[0]*Linz[2]+Linz[0]*Linz[3];
+                                                          curvGrad=pow(cnx*cnx+cny*cny+cnz*cnz,0.5);
+                                                          vel=pow( pow(Liu[0],2.)
+                                                                  +pow(Liv[0],2.)
+                                                                  +pow(Liw[0],2.),0.5);
+                                                          curv= pow( pow(Liv[0]*Liaz[0]-Liw[0]*Liay[0],2.)
+                                                                    +pow(Liw[0]*Liax[0]-Liu[0]*Liaz[0],2.)
+                                                                    +pow(Liu[0]*Liay[0]-Liv[0]*Liax[0],2.)
+                                                                    ,0.5)
+                                                               /(vel*vel*vel);
+                                                          /*if(fabs(curvGrad)+fabs(curv)>0){
+                                                             curvCriteria=fabs(curvGrad-curv)/(fabs(curvGrad)+fabs(curv));
+                                                          }
+                                                          else{
+                                                             curvCriteria=0.95;
+                                                          }*/
+                                                          if(fabs(curvGrad)<fabs(curv)){
+                                                             curvCriteria=1.-fabs(curvGrad)/fabs(curv);
+                                                          }
+                                                          else{
+                                                             curvCriteria=1.-fabs(curv)/fabs(curvGrad);
+                                                          }
+                                                          //weighting according to grad k check
+                                                          acx=Liu[0]*Liu[1]+Liv[0]*Liu[2]+Liw[0]*Liu[3];
+                                                          acy=Liu[0]*Liv[1]+Liv[0]*Liv[2]+Liw[0]*Liv[3];
+                                                          acz=Liu[0]*Liw[1]+Liv[0]*Liw[2]+Liw[0]*Liw[3];
+                                                          w1=Liw[2]-Liv[3];
+                                                          w2=Liu[3]-Liw[1];
+                                                          w3=Liv[1]-Liu[2];
+                                                          Lx=w2*Liw[0]-w3*Liv[0];
+                                                          Ly=w3*Liu[0]-w1*Liw[0];
+                                                          Lz=w1*Liv[0]-w2*Liu[0];
+                                                          dix=acx-Lx-Lik[1];
+                                                          diy=acy-Ly-Lik[2];
+                                                          diz=acz-Lz-Lik[3];
+                                                          refx=fabs(acx)+fabs(Lx)+fabs(Lik[1]);
+                                                          refy=fabs(acy)+fabs(Ly)+fabs(Lik[2]);
+                                                          refz=fabs(acz)+fabs(Lz)+fabs(Lik[3]);
+                                                          if(refx>0 && refy>0 && refz>0){
+                                                             gradCriteria=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz); //20.*absdi;//
+                                                          }
+                                                          else{
+                                                             gradCriteria=0.95;
+                                                          }
+                                                          traj[numInTraj][30]= weightDivU*divCriteria
+                                                                              +weightAcc*accCriteria
+                                                                              +weightDivA*divaCriteria
+                                                                              +weightCurv*curvCriteria
+                                                                              +weightGradK*gradCriteria;
+                                                      }
+                                                      ///end curvature and grad kinetic energy stuff
+                                                   }
+                                                }
+                                             }
+                                          }
+                                       }
+                                    }
+                                 }
+                              }
+                           }
+                        }
                      }
                   }
-
-                  for(int j=0;j<3;j++){
-                     if(pCounterC[pm]>0){
-                        makeAT(2*pm+1,order); ////////////ORDER
-                        makeATA(2*pm+1,order);////////////ORDER
-                        makeATY(2*pm+1,order,j); ////////////ORDER
-                        solve(2*pm+1,order);////////////ORDER
-                        if(mainForm->RadioGroup->ItemIndex==0){
-                           traj[numInTraj][11+j]=X[1];
-                        }
-                        else{
-                           traj[numInTraj][50+j]=X[1];
-                        }
-                     }
-                     else{
-                        if(mainForm->RadioGroup->ItemIndex==0){
-                           traj[numInTraj][11+j]=10000.;
-                        }
-                        else{
-                           traj[numInTraj][50+j]=10000.;
-                        }
-                     }
-                  }
-
-                  traj[numInTraj][53]=point[time][n][2];//x
-                  traj[numInTraj][54]=point[time][n][3];//y
-                  traj[numInTraj][55]=point[time][n][4];//z
-                  traj[numInTraj][56]=point[time][n][5];//u
-                  traj[numInTraj][57]=point[time][n][6];//v
-                  traj[numInTraj][58]=point[time][n][7];//w
-                  traj[numInTraj][14]=point[time][n][8];//ax
-                  traj[numInTraj][15]=point[time][n][9];//ay
-                  traj[numInTraj][16]=point[time][n][10];//az
-
-                  //////////////////////////for quality
-                  if(mainForm->RadioGroup->ItemIndex==0){
-                     up[numInTraj] =traj[numInTraj][56];vp[numInTraj] =traj[numInTraj][57];wp[numInTraj] =traj[numInTraj][58];
-                     axp[numInTraj]=traj[numInTraj][14];ayp[numInTraj]=traj[numInTraj][15];azp[numInTraj]=traj[numInTraj][16];
-
-                     dudxp[numInTraj]=0.31539156525252005*(-1.4142135623730951*traj[numInTraj][6]+1.7320508075688772*traj[numInTraj][8]);
-                     dudyp[numInTraj]=0.5462742152960396*(traj[numInTraj][2] + 1.4142135623730951*traj[numInTraj][9]);
-                     dudzp[numInTraj]=0.5462742152960396*(traj[numInTraj][3] - 1.*traj[numInTraj][7]);
-                     dvdxp[numInTraj]=0.5462742152960396*(traj[numInTraj][2] - 1.4142135623730951*traj[numInTraj][9]);
-                     dvdyp[numInTraj]=-0.31539156525252005*(1.4142135623730951*traj[numInTraj][6] + 1.7320508075688772*traj[numInTraj][8]);
-                     dvdzp[numInTraj]=-0.5462742152960396*(traj[numInTraj][1] + traj[numInTraj][10]);
-                     dwdxp[numInTraj]=-0.5462742152960396*(traj[numInTraj][3] + traj[numInTraj][7]);
-                     dwdyp[numInTraj]=0.5462742152960396*(-1.*traj[numInTraj][1] + traj[numInTraj][10]);
-                     dwdzp[numInTraj]=0.8920620580763856*traj[numInTraj][6];
-
-                     dudtp[numInTraj]=traj[numInTraj][11];
-                     dvdtp[numInTraj]=traj[numInTraj][12];
-                     dwdtp[numInTraj]=traj[numInTraj][13];
-                  }
-                  else{
-                     up[numInTraj] =traj[numInTraj][56];vp[numInTraj] =traj[numInTraj][57];wp[numInTraj] =traj[numInTraj][58];
-                     axp[numInTraj]=traj[numInTraj][59];ayp[numInTraj]=traj[numInTraj][60];azp[numInTraj]=traj[numInTraj][61];
-
-                     dudxp[numInTraj]=0.03526184897173477*(-12.649110640673518*traj[numInTraj][24] - 32.863353450309965*traj[numInTraj][25] \
-                               + 15.491933384829668*traj[numInTraj][28] + 40.24922359499622*traj[numInTraj][29]);
-                     dudyp[numInTraj]=0.03526184897173477*(15.491933384829668*traj[numInTraj][4] + 40.24922359499622*traj[numInTraj][5] + \
-                            21.908902300206645*traj[numInTraj][39] - 73.48469228349533*traj[numInTraj][40]);
-                     dudzp[numInTraj]=0.03526184897173477*(15.491933384829668*traj[numInTraj][13] - 51.96152422706631*traj[numInTraj][14] - \
-                            15.491933384829668*traj[numInTraj][26] - 40.24922359499622*traj[numInTraj][27]);
-                     dvdxp[numInTraj]=0.03526184897173477*(15.491933384829668*traj[numInTraj][4] + 40.24922359499622*traj[numInTraj][5] \
-                            - 21.908902300206645*traj[numInTraj][39] + 73.48469228349533*traj[numInTraj][40]);
-                     dvdyp[numInTraj]=0.03526184897173477*(-12.649110640673518*traj[numInTraj][24] - 32.863353450309965*traj[numInTraj][25] \
-                            - 15.491933384829668*traj[numInTraj][28] - 40.24922359499622*traj[numInTraj][29]);
-                     dvdzp[numInTraj]=0.03526184897173477*(-15.491933384829668*traj[numInTraj][2] - 40.24922359499622*traj[numInTraj][3] \
-                            - 15.491933384829668*traj[numInTraj][41] + 51.96152422706631*traj[numInTraj][42]);
-                     dwdxp[numInTraj]=0.03526184897173477*(-15.491933384829668*traj[numInTraj][13] + 51.96152422706631*traj[numInTraj][14] \
-                            - 15.491933384829668*traj[numInTraj][26] - 40.24922359499622*traj[numInTraj][27]);
-                     dwdyp[numInTraj]=0.03526184897173477*(-15.491933384829668*traj[numInTraj][2] - 40.24922359499622*traj[numInTraj][3] \
-                            + 15.491933384829668*traj[numInTraj][41] - 51.96152422706631*traj[numInTraj][42]);
-                     dwdzp[numInTraj]=0.07052369794346953*(12.649110640673518*traj[numInTraj][24] + 32.863353450309965*traj[numInTraj][25]);
-
-                     dudtp[numInTraj]=traj[numInTraj][50];
-                     dvdtp[numInTraj]=traj[numInTraj][51];
-                     dwdtp[numInTraj]=traj[numInTraj][52];
-                  }
-                  dix=axp[numInTraj]-dudtp[numInTraj]-up[numInTraj]*dudxp[numInTraj]-vp[numInTraj]*dudyp[numInTraj]-wp[numInTraj]*dudzp[numInTraj];
-                  diy=ayp[numInTraj]-dvdtp[numInTraj]-up[numInTraj]*dvdxp[numInTraj]-vp[numInTraj]*dvdyp[numInTraj]-wp[numInTraj]*dvdzp[numInTraj];
-                  diz=azp[numInTraj]-dwdtp[numInTraj]-up[numInTraj]*dwdxp[numInTraj]-vp[numInTraj]*dwdyp[numInTraj]-wp[numInTraj]*dwdzp[numInTraj];
-                  refx= fabs(axp[numInTraj])
-                          +fabs(dudtp[numInTraj])
-                          +fabs( up[numInTraj]*dudxp[numInTraj]
-                                +vp[numInTraj]*dudyp[numInTraj]
-                                +wp[numInTraj]*dudzp[numInTraj]);
-                  refy= fabs(ayp[numInTraj])
-                          +fabs(dvdtp[numInTraj])
-                          +fabs( up[numInTraj]*dvdxp[numInTraj]
-                                +vp[numInTraj]*dvdyp[numInTraj]
-                                +wp[numInTraj]*dvdzp[numInTraj]);
-                  refz= fabs(azp[numInTraj])
-                          +fabs(dwdtp[numInTraj])
-                          +fabs( up[numInTraj]*dwdxp[numInTraj]
-                                +vp[numInTraj]*dwdyp[numInTraj]
-                                +wp[numInTraj]*dwdzp[numInTraj]);
-                  if(refx>0 && refy>0 && refz>0){
-                     traj[numInTraj][62]=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz);
-                  }
-                  else{
-                     traj[numInTraj][62]=0.95;
-                  }
-                  if(traj[numInTraj][62]>0.95){traj[numInTraj][62]=0.95;}
-                  //////////////////////////end for quality
-
                }// end of if pCOunter>3 solve...
-               if(!(pCounterB>minCounter )){
-                  for(int j=0;j<62;j++){
-                      traj[numInTraj][j]=0.;
-                  }
-                  traj[numInTraj][62]=0.95;
+               if(!(pCounterB>minCounter ) || !(contin)){
+                  traj[numInTraj][ 0]=point[time][n][2];
+                  traj[numInTraj][ 1]=point[time][n][3];
+                  traj[numInTraj][ 2]=point[time][n][4];
+                  traj[numInTraj][ 3]=point[time][n][5];
+                  traj[numInTraj][ 4]=point[time][n][6];
+                  traj[numInTraj][ 5]=point[time][n][7];
+                  traj[numInTraj][ 6]=0;
+                  traj[numInTraj][ 7]=0;
+                  traj[numInTraj][ 8]=0;
+                  traj[numInTraj][ 9]=0.;
+                  traj[numInTraj][10]=0.;
+                  traj[numInTraj][11]=0.;
+                  traj[numInTraj][12]=0.;
+                  traj[numInTraj][13]=0.;
+                  traj[numInTraj][14]=0.;
+                  traj[numInTraj][15]=0.;
+                  traj[numInTraj][16]=0.;
+                  traj[numInTraj][17]=0.;
+                  traj[numInTraj][18]=point[time][n][8];
+                  traj[numInTraj][19]=point[time][n][9];
+                  traj[numInTraj][20]=point[time][n][10];
+                  traj[numInTraj][21]=0.;
+                  traj[numInTraj][22]=0.;
+                  traj[numInTraj][23]=0.;
+                  traj[numInTraj][24]=0;
+                  traj[numInTraj][25]=0;
+                  traj[numInTraj][26]=0;
+                  traj[numInTraj][27]=0;
+                  traj[numInTraj][28]=0;
+                  traj[numInTraj][29]=0;
+
+                  traj[numInTraj][30]=1.;   //Wichtig
+                  traj[numInTraj][31]=(double)n;
+
+                  ///curvature and grad kinetic energy stuff
+                  if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                     ///traj[numInTraj][33..47]
+                     traj[numInTraj][33]=0.;
+                     traj[numInTraj][34]=0.;
+                     traj[numInTraj][35]=0.;
+                     traj[numInTraj][36]=0.;
+                     traj[numInTraj][37]=0.;
+                     traj[numInTraj][38]=0.;
+                     traj[numInTraj][39]=0.;
+                     traj[numInTraj][40]=0.;
+                     traj[numInTraj][41]=0.;
+                     traj[numInTraj][42]=0.;
+                     traj[numInTraj][43]=0.;
+                     traj[numInTraj][44]=0;
+                     traj[numInTraj][45]=0;
+                     traj[numInTraj][46]=0;
+                     traj[numInTraj][47]=0;
+                  }
+                  ///end urvature and grad kinetic energy stuff
                   noDeriv++;
                }
                numInTraj++;
-               if(traj[numInTraj][62]<0.1){
-                  count7++;
-               }
-               count8++;
 
                //schauen ob's einen nächsten gibt
-               if(point[time][n][1]>0 && time<lastFile-firstFile-1){
+               if(point[time][n][1]>0 && time<lastFile-firstFile+1){
                    n=point[time][n][1];
                    time++;
-                   if( point[time][n][11]==0 || time>197){
+                   if( point[time][n][11]<1. ){  // && !(occ[t+time-2][n]) ){
+                   //if( point[time][n][11]<1. || (occ[time][n]) ){
                        ok=false;
                    }
                }
@@ -2078,14 +2273,52 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
             }//end while ok
             //numInTraj++;
             count3++;
-            mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count8+0.5));
             succIntTraj=(succIntTraj*(double)(count3-1)+(1-(double)noDeriv/(double)numInTraj)*100.)/(double)count3;
             if(numInTraj-noDeriv>minTrajLength-1){   //Wichtig
                /////polynom business////////////////////////////////////////
+               double su=0.;
+               double x0[300],x1[300],x2[300],x3[300],x4[300],x5[300],x6[300];
+               double x7[300],x8[300],x9[300],x10[300],x11[300];
+               double x12[300],x13[300],x14[300];
+               double x15[300],x16[300],x17[300];
+               double x18[300],x19[300],x20[300];
+               double x21[300],x22[300],x23[300];
+               double x24[300],x25[300],x26[300];
+               double x27[300],x28[300],x29[300];
+               double x30[300],x31[300],x32[300];
+               double x33[300],x34[300],x35[300];
+               double x36[300],x37[300],x38[300];
+               double x39[300],x40[300],x41[300];
+               double xp[300],yp[300],zp[300];
+               double up[300],vp[300],wp[300];
+               double axp[300],ayp[300],azp[300];
+               double dudxp[300],dudyp[300],dudzp[300];
+               double dvdxp[300],dvdyp[300],dvdzp[300];
+               double dwdxp[300],dwdyp[300],dwdzp[300];
+               double dudtp[300],dvdtp[300],dwdtp[300];
+               double daxdxp[300],daxdyp[300],daxdzp[300];
+               double daydxp[300],daydyp[300],daydzp[300];
+               double dazdxp[300],dazdyp[300],dazdzp[300];
+               double nxp[300],nyp[300],nzp[300];
+               double dnxdxp[300],dnxdyp[300],dnxdzp[300];
+               double dnydxp[300],dnydyp[300],dnydzp[300];
+               double dnzdxp[300],dnzdyp[300],dnzdzp[300];
+               double dkdxp[300],dkdyp[300],dkdzp[300];
+               double div,ref;
+               double vectorSq;
 
-               su=0.;
-               for(int ii=pm;ii<numInTraj-pm;ii++){
-                  su=su+(1.-traj[ii][62]);//success=0, bad=1;
+               double fP;
+               if(trajForm->polyCheck->Checked){
+                  fP=1;
+               }
+               else{
+                  fP=0;
+               }
+
+               setAllMatrixesToZero(4);
+
+               for(int ii=0;ii<numInTraj;ii++){
+                  su=su+1-traj[ii][30];//success=0, bad=1;
                }
                //int orderA=(int)(su/35.+3.5);
                int orderA=(int)(su/polyConst+3.5);
@@ -2095,187 +2328,559 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
                forEffectiveMeanNumInTraj=forEffectiveMeanNumInTraj+su;
                forTypicalPolyOrder=forTypicalPolyOrder+numInTraj*orderA;
 
+               if(numInTraj<5){
+                  orderA=2;
+               }
+               if(numInTraj<2){
+                  orderA=1;
+               }
                trajForm->polyOrderEdit->Text=IntToStr(orderA);
                trajForm->polyOrderEdit->Refresh();
 
                for(int ii=0;ii<numInTraj;ii++){
-                  we[ii]=1.-1./(1.+exp(-c1*(traj[ii][62]-c2)));//quality(ii)
+                  we[ii]=1.-1./(1.+exp(-c1*(traj[ii][30]-c2)));//reldiv(ii)
                }
 
-               for(int ii=pm;ii<numInTraj-pm;ii++){
+               for(int ii=0;ii<numInTraj;ii++){
                   for(int ij=0;ij<orderA;ij++){
-                     A[ii-pm][ij]=we[ii]*pow((double)(ii-pm)*deltaT+0.000000001,(double)(ij));
+                     A[ii][ij]=we[ii]*pow((double)ii*deltaT+0.000000001,(double)(ij));
                   }
-                  if(mainForm->RadioGroup->ItemIndex==0){
-                     for(int jj=0;jj<17;jj++){
-                         y[jj][ii-pm]=we[ii]*traj[ii][jj];
-                     }
+
+                  y3 [ii]=we[ii]*traj[ii][ 6]; //du/dx
+                  y4 [ii]=we[ii]*traj[ii][ 7]; //du/dy
+                  y5 [ii]=we[ii]*traj[ii][ 8]; //du/dz
+                  y6 [ii]=we[ii]*traj[ii][ 9]; //dv/dx
+                  y7 [ii]=we[ii]*traj[ii][10]; //dv/dy
+                  y8 [ii]=we[ii]*traj[ii][11]; //dv/dz
+                  y9 [ii]=we[ii]*traj[ii][12]; //dw/dx
+                  y10[ii]=we[ii]*traj[ii][13]; //dw/dy
+                  y11[ii]=we[ii]*traj[ii][14]; //dw/dz
+
+                  y12[ii]=we[ii]*traj[ii][15]; //du/dt
+                  y13[ii]=we[ii]*traj[ii][16]; //dv/dt
+                  y14[ii]=we[ii]*traj[ii][17]; //dw/dt
+
+                  y39[ii]=we[ii]*traj[ii][18]; //ax
+                  y40[ii]=we[ii]*traj[ii][19]; //ay
+                  y41[ii]=we[ii]*traj[ii][20]; //az
+
+                  y15[ii]=we[ii]*traj[ii][21]; //da_x/dx
+                  y16[ii]=we[ii]*traj[ii][22]; //da_x/dy
+                  y17[ii]=we[ii]*traj[ii][23]; //da_x/dz
+                  y18[ii]=we[ii]*traj[ii][24]; //da_y/dx
+                  y19[ii]=we[ii]*traj[ii][25]; //da_y/dy
+                  y20[ii]=we[ii]*traj[ii][26]; //da_y/dz
+                  y21[ii]=we[ii]*traj[ii][27]; //da_z/dx
+                  y22[ii]=we[ii]*traj[ii][28]; //da_z/dy
+                  y23[ii]=we[ii]*traj[ii][29]; //da_z/dz
+
+                  ///curvature and grad kinetic energy stuff
+                  if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                     ///traj[numInTraj][32..47]
+                     y24[ii]=we[ii]*traj[ii][33]; //n_x
+                     y25[ii]=we[ii]*traj[ii][34]; //n_y
+                     y26[ii]=we[ii]*traj[ii][35]; //n_z
+                     y27[ii]=we[ii]*traj[ii][36]; //dn_x/dx
+                     y28[ii]=we[ii]*traj[ii][37]; //dn_x/dy
+                     y29[ii]=we[ii]*traj[ii][38]; //dn_x/dz
+                     y30[ii]=we[ii]*traj[ii][39]; //dn_y/dx
+                     y31[ii]=we[ii]*traj[ii][40]; //dn_y/dy
+                     y32[ii]=we[ii]*traj[ii][41]; //dn_y/dz
+                     y33[ii]=we[ii]*traj[ii][42]; //dn_z/dx
+                     y34[ii]=we[ii]*traj[ii][43]; //dn_z/dy
+                     y35[ii]=we[ii]*traj[ii][44]; //dn_z/dz
+
+                     y36[ii]=we[ii]*traj[ii][45]; //dk/dx
+                     y37[ii]=we[ii]*traj[ii][46]; //dk/dy
+                     y38[ii]=we[ii]*traj[ii][47]; //dk/dz
                   }
-                  else{
-                     for(int jj=0;jj<53;jj++){
-                         y[jj][ii-pm]=we[ii]*traj[ii][jj];
-                     }
-                  }
+                  ///end urvature and grad kinetic energy stuff
 
                }
-               if(mainForm->RadioGroup->ItemIndex==0){
-                  for(int jj=0;jj<17;jj++){
-                     makeAT(numInTraj-2*pm,orderA);
-                     makeATA(numInTraj-2*pm,orderA);
-                     makeATY(numInTraj-2*pm,orderA,jj);
-                     solve(numInTraj-2*pm,orderA);
-                     for(int ii=0;ii<orderA;ii++){
-                        x[jj][ii]=X[ii];
-                     }
+               
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,7);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x3[ii]=X[ii];//du/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,8);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x4[ii]=X[ii];//du/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,9);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x5[ii]=X[ii];//du/dz
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,10);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x6[ii]=X[ii];//dv/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,11);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x7[ii]=X[ii];//dv/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,12);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x8[ii]=X[ii];//dv/dz
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,13);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x9[ii]=X[ii];//dw/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,14);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x10[ii]=X[ii];//dw/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,15);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x11[ii]=X[ii];//dw/dz
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,16);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x12[ii]=X[ii];//du/dt
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,17);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x13[ii]=X[ii];//dv/dt
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,18);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x14[ii]=X[ii];//dw/dt
+               }
+
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,43);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x39[ii]=X[ii];//a_x
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,44);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x40[ii]=X[ii];//a_y
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,45);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x41[ii]=X[ii];//a_z
+               }
+
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,19);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x15[ii]=X[ii];//da_x/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,20);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x16[ii]=X[ii];//da_x/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,21);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x17[ii]=X[ii];//da_x/dz
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,22);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x18[ii]=X[ii];//da_y/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,23);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x19[ii]=X[ii];//da_y/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,24);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x20[ii]=X[ii];//da_y/dz
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,25);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x21[ii]=X[ii];//da_z/dx
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,26);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x22[ii]=X[ii];//da_z/dy
+               }
+               makeAT(numInTraj,orderA);
+               makeATA(numInTraj,orderA);
+               makeATY(numInTraj,orderA,27);
+               solve(numInTraj,orderA);
+               for(int ii=0;ii<orderA;ii++){
+                  x23[ii]=X[ii];//da_z/dz
+               }
+
+               ///curvature and grad kinetic energy stuff
+               if(mainForm->interpolRadioGroup->ItemIndex==1){
+                  ///ATY( , ,28..42)
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,28);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x24[ii]=X[ii];//n_x
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,29);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x25[ii]=X[ii];//n_y
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,30);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x26[ii]=X[ii];//n_z
+                  }
+
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,31);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x27[ii]=X[ii];//dn_x/dx
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,32);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x28[ii]=X[ii];//dn_x/dy
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,33);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x29[ii]=X[ii];//dn_x/dz
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,34);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x30[ii]=X[ii];//dn_y/dx
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,35);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x31[ii]=X[ii];//dn_y/dy
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,36);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x32[ii]=X[ii];//dn_y/dz
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,37);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x33[ii]=X[ii];//dn_z/dx
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,38);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x34[ii]=X[ii];//dn_z/dy
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,39);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x35[ii]=X[ii];//dn_z/dz
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,40);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x36[ii]=X[ii];//dk/dx
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,41);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x37[ii]=X[ii];//dk/dy
+                  }
+                  makeAT(numInTraj,orderA);
+                  makeATA(numInTraj,orderA);
+                  makeATY(numInTraj,orderA,42);
+                  solve(numInTraj,orderA);
+                  for(int ii=0;ii<orderA;ii++){
+                     x38[ii]=X[ii];//dk/dz
                   }
                }
-               else{
-                  for(int jj=0;jj<53;jj++){
-                     makeAT(numInTraj-2*pm,orderA);
-                     makeATA(numInTraj-2*pm,orderA);
-                     makeATY(numInTraj-2*pm,orderA,jj);
-                     solve(numInTraj-2*pm,orderA);
-                     for(int ii=0;ii<orderA;ii++){
-                        x[jj][ii]=X[ii];
-                     }
-                  }
-               }
+               ///end curvature and grad kinetic energy stuff
 
-               for(int ii=0;ii<numInTraj-2*pm;ii++){
-                  for(int jj=0;jj<53;jj++){
-                     pC[jj][ii]=0;
-                  }
-                  xp[ii]=0;yp[ii]=0;zp[ii]=0;
-                  up[ii]=0;vp[ii]=0;wp[ii]=0;
-                  axp[ii]=0;ayp[ii]=0;azp[ii]=0;
-                  dudxp[ii]=0;dudyp[ii]=0;dudzp[ii]=0;
-                  dvdxp[ii]=0;dvdyp[ii]=0;dvdzp[ii]=0;
-                  dwdxp[ii]=0;dwdyp[ii]=0;dwdzp[ii]=0;
-                  dudtp[ii]=0;dvdtp[ii]=0;dwdtp[ii]=0;
-                  NXp[ii]=0;NYp[ii]=0;NZp[ii]=0;
-                  daxdxp[ii]=0;daxdyp[ii]=0;daxdzp[ii]=0;
-                  daydxp[ii]=0;daydyp[ii]=0;daydzp[ii]=0;
-                  dazdxp[ii]=0;dazdyp[ii]=0;dazdzp[ii]=0;
 
-                  if(mainForm->RadioGroup->ItemIndex==0){
-                     for(int jj=0;jj<17;jj++){
-                        for(int ij=0;ij<orderA;ij++){
-                           pC[jj][ii]=pC[jj][ii]+x[jj][ij]*pow((double)ii*deltaT+1e-10,(double)(ij));
-                        }
-                        //pC[jj][ii]=traj[ii][jj];
+               for(int ii=0;ii<numInTraj;ii++){
+               
+                  up[ii]=0;
+                  vp[ii]=0;
+                  wp[ii]=0;
+                  dudxp[ii]=0;
+                  dudyp[ii]=0;
+                  dudzp[ii]=0;
+                  dvdxp[ii]=0;
+                  dvdyp[ii]=0;
+                  dvdzp[ii]=0;
+                  dwdxp[ii]=0;
+                  dwdyp[ii]=0;
+                  dwdzp[ii]=0;
+                  dudtp[ii]=0;
+                  dvdtp[ii]=0;
+                  dwdtp[ii]=0;
+                  axp[ii]=0;
+                  ayp[ii]=0;
+                  azp[ii]=0;
+                  daxdxp[ii]=0;
+                  daxdyp[ii]=0;
+                  daxdzp[ii]=0;
+                  daydxp[ii]=0;
+                  daydyp[ii]=0;
+                  daydzp[ii]=0;
+                  dazdxp[ii]=0;
+                  dazdyp[ii]=0;
+                  dazdzp[ii]=0;
+
+                  ///curvature and grad kinetic energy stuff
+                  if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                     nxp[ii]=0;
+                     nyp[ii]=0;
+                     nzp[ii]=0;
+                     dnxdxp[ii]=0;
+                     dnxdyp[ii]=0;
+                     dnxdzp[ii]=0;
+                     dnydxp[ii]=0;
+                     dnydyp[ii]=0;
+                     dnydzp[ii]=0;
+                     dnzdxp[ii]=0;
+                     dnzdyp[ii]=0;
+                     dnzdzp[ii]=0;
+                     dkdxp[ii]=0;
+                     dkdyp[ii]=0;
+                     dkdzp[ii]=0;
+                  }
+                  ///end urvature and grad kinetic energy stuff
+
+                  for(int ij=0;ij<orderA;ij++){
+                     dudxp[ii]=dudxp[ii]+ x3[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dudyp[ii]=dudyp[ii]+ x4[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dudzp[ii]=dudzp[ii]+ x5[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dvdxp[ii]=dvdxp[ii]+ x6[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dvdyp[ii]=dvdyp[ii]+ x7[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dvdzp[ii]=dvdzp[ii]+ x8[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dwdxp[ii]=dwdxp[ii]+ x9[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dwdyp[ii]=dwdyp[ii]+x10[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dwdzp[ii]=dwdzp[ii]+x11[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+
+                     dudtp[ii]=dudtp[ii]+x12[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dvdtp[ii]=dvdtp[ii]+x13[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dwdtp[ii]=dwdtp[ii]+x14[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+
+                     axp[ii]=axp[ii]+x39[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     ayp[ii]=ayp[ii]+x40[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     azp[ii]=azp[ii]+x41[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+
+                     daxdxp[ii]=daxdxp[ii]+x15[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     daxdyp[ii]=daxdyp[ii]+x16[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     daxdzp[ii]=daxdzp[ii]+x17[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     daydxp[ii]=daydxp[ii]+x18[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     daydyp[ii]=daydyp[ii]+x19[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     daydzp[ii]=daydzp[ii]+x20[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dazdxp[ii]=dazdxp[ii]+x21[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dazdyp[ii]=dazdyp[ii]+x22[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                     dazdzp[ii]=dazdzp[ii]+x23[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+
+                     ///curvature and grad kinetic energy stuff
+                     if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                        nxp[ii]=nxp[ii]+x24[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        nyp[ii]=nyp[ii]+x25[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        nzp[ii]=nzp[ii]+x26[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnxdxp[ii]=dnxdxp[ii]+x27[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnxdyp[ii]=dnxdyp[ii]+x28[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnxdzp[ii]=dnxdzp[ii]+x29[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnydxp[ii]=dnydxp[ii]+x30[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnydyp[ii]=dnydyp[ii]+x31[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnydzp[ii]=dnydzp[ii]+x32[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnzdxp[ii]=dnzdxp[ii]+x33[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnzdyp[ii]=dnzdyp[ii]+x34[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dnzdzp[ii]=dnzdzp[ii]+x35[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+
+                        dkdxp[ii]=dkdxp[ii]+x36[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dkdyp[ii]=dkdyp[ii]+x37[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
+                        dkdzp[ii]=dkdzp[ii]+x38[ij]*pow((double)ii*deltaT+0.00001,(double)(ij));
                      }
+                     ///end urvature and grad kinetic energy stuff
+                  }
+                  
+                  double fR=1.-fP;
+                  xp [ii]=traj[ii][ 0];
+                  yp [ii]=traj[ii][ 1];
+                  zp [ii]=traj[ii][ 2];
+                  up [ii]=traj[ii][ 3];
+                  vp [ii]=traj[ii][ 4];
+                  wp [ii]=traj[ii][ 5];
+                  /*if(ii>0 && ii<numInTraj-1){
+                     axp[ii]=30.*(traj[ii+1][ 3]-traj[ii-1][ 3]);
+                     ayp[ii]=30.*(traj[ii+1][ 4]-traj[ii-1][ 4]);
+                     azp[ii]=30.*(traj[ii+1][ 5]-traj[ii-1][ 5]);
                   }
                   else{
-                     for(int jj=0;jj<53;jj++){
-                        for(int ij=0;ij<orderA;ij++){
-                           pC[jj][ii]=pC[jj][ii]+x[jj][ij]*pow((double)ii*deltaT+1e-10,(double)(ij));
-                        }
-                        //pC[jj][ii]=traj[ii][jj];
-                     }
+                     axp[ii]=traj[ii][18];
+                     ayp[ii]=traj[ii][19];
+                     azp[ii]=traj[ii][20];
+                  }*/
+
+
+                  dudxp[ii]=fP*dudxp[ii]+fR*traj[ii][ 6];
+                  dudyp[ii]=fP*dudyp[ii]+fR*traj[ii][ 7];
+                  dudzp[ii]=fP*dudzp[ii]+fR*traj[ii][ 8];
+                  dvdxp[ii]=fP*dvdxp[ii]+fR*traj[ii][ 9];
+                  dvdyp[ii]=fP*dvdyp[ii]+fR*traj[ii][10];
+                  dvdzp[ii]=fP*dvdzp[ii]+fR*traj[ii][11];
+                  dwdxp[ii]=fP*dwdxp[ii]+fR*traj[ii][12];
+                  dwdyp[ii]=fP*dwdyp[ii]+fR*traj[ii][13];
+                  dwdzp[ii]=fP*dwdzp[ii]+fR*traj[ii][14];
+
+                  dudtp[ii]=fP*dudtp[ii]+fR*traj[ii][15];
+                  dvdtp[ii]=fP*dvdtp[ii]+fR*traj[ii][16];
+                  dwdtp[ii]=fP*dwdtp[ii]+fR*traj[ii][17];
+
+                  axp[ii]=fP*axp[ii]+fR*traj[ii][18];
+                  ayp[ii]=fP*ayp[ii]+fR*traj[ii][19];
+                  azp[ii]=fP*azp[ii]+fR*traj[ii][20];
+
+                  daxdxp[ii]=fP*daxdxp[ii]+fR*traj[ii][21];
+                  daxdyp[ii]=fP*daxdyp[ii]+fR*traj[ii][22];
+                  daxdzp[ii]=fP*daxdzp[ii]+fR*traj[ii][23];
+                  daydxp[ii]=fP*daydxp[ii]+fR*traj[ii][24];
+                  daydyp[ii]=fP*daydyp[ii]+fR*traj[ii][25];
+                  daydzp[ii]=fP*daydzp[ii]+fR*traj[ii][26];
+                  dazdxp[ii]=fP*dazdxp[ii]+fR*traj[ii][27];
+                  dazdyp[ii]=fP*dazdyp[ii]+fR*traj[ii][28];
+                  dazdzp[ii]=fP*dazdzp[ii]+fR*traj[ii][29];
+
+                  ///curvature and grad kinetic energy stuff
+                  if(mainForm->interpolRadioGroup->ItemIndex==1){
+                     /*nxp[ii]=fP*nxp[ii]+fR*traj[ii][33];
+                     nyp[ii]=fP*nyp[ii]+fR*traj[ii][34];
+                     nzp[ii]=fP*nzp[ii]+fR*traj[ii][35];*/
+                     nxp[ii]=traj[ii][33];
+                     nyp[ii]=traj[ii][34];
+                     nzp[ii]=traj[ii][35];
+
+                     dnxdxp[ii]=fP*dnxdxp[ii]+fR*traj[ii][36];
+                     dnxdyp[ii]=fP*dnxdyp[ii]+fR*traj[ii][37];
+                     dnxdzp[ii]=fP*dnxdzp[ii]+fR*traj[ii][38];
+                     dnydxp[ii]=fP*dnydxp[ii]+fR*traj[ii][39];
+                     dnydyp[ii]=fP*dnydyp[ii]+fR*traj[ii][40];
+                     dnydzp[ii]=fP*dnydzp[ii]+fR*traj[ii][41];
+                     dnzdxp[ii]=fP*dnzdxp[ii]+fR*traj[ii][42];
+                     dnzdyp[ii]=fP*dnzdyp[ii]+fR*traj[ii][43];
+                     dnzdzp[ii]=fP*dnzdzp[ii]+fR*traj[ii][44];
+
+                     dkdxp[ii]=fP*dkdxp[ii]+fR*traj[ii][45];
+                     dkdyp[ii]=fP*dkdyp[ii]+fR*traj[ii][46];
+                     dkdzp[ii]=fP*dkdzp[ii]+fR*traj[ii][47];
                   }
-
-                  //and now with the smooth poly constants pC we can build u, ux and whatever
-                  xp[ii] =traj[ii+2][53];yp[ii] =traj[ii+2][54];zp[ii] =traj[ii+2][55];
-                  up[ii] =traj[ii+2][56];vp[ii] =traj[ii+2][57];wp[ii] =traj[ii+2][58];
-                  axp[ii]=traj[ii+2][14];ayp[ii]=traj[ii+2][15];azp[ii]=traj[ii+2][16];
-
-                  if(mainForm->RadioGroup->ItemIndex==0){
-                     dudxp[ii]=0.31539156525252005*(-1.4142135623730951*pC[6][ii]+1.7320508075688772*pC[8][ii]);
-                     dudyp[ii]=0.5462742152960396*(pC[2][ii] + 1.4142135623730951*pC[9][ii]);
-                     dudzp[ii]=0.5462742152960396*(pC[3][ii] - 1.*pC[7][ii]);
-                     dvdxp[ii]=0.5462742152960396*(pC[2][ii] - 1.4142135623730951*pC[9][ii]);
-                     dvdyp[ii]=-0.31539156525252005*(1.4142135623730951*pC[6][ii] + 1.7320508075688772*pC[8][ii]);
-                     dvdzp[ii]=-0.5462742152960396*(pC[1][ii] + pC[10][ii]);
-                     dwdxp[ii]=-0.5462742152960396*(pC[3][ii] + pC[7][ii]);
-                     dwdyp[ii]=0.5462742152960396*(-1.*pC[1][ii] + pC[10][ii]);
-                     dwdzp[ii]=0.8920620580763856*pC[6][ii];
-
-                     dudtp[ii]=pC[11][ii];
-                     dvdtp[ii]=pC[12][ii];
-                     dwdtp[ii]=pC[13][ii];
-
-                     //axp[ii]=pC[14][ii];
-                     //ayp[ii]=pC[15][ii];
-                     //azp[ii]=pC[16][ii];
-
-                     NXp[ii]=0;
-                     NYp[ii]=0;
-                     NZp[ii]=0;
-
-                     daxdxp[ii]=0;
-                     daxdyp[ii]=0;
-                     daxdzp[ii]=0;
-                     daydxp[ii]=0;
-                     daydyp[ii]=0;
-                     daydzp[ii]=0;
-                     dazdxp[ii]=0;
-                     dazdyp[ii]=0;
-                     dazdzp[ii]=0;
-                  }
-                  else{
-                     dudxp[ii]=0.03526184897173477*(-12.649110640673518*pC[24][ii] - 32.863353450309965*pC[25][ii] \
-                            + 15.491933384829668*pC[28][ii] + 40.24922359499622*pC[29][ii]);
-                     dudyp[ii]=0.03526184897173477*(15.491933384829668*pC[4][ii] + 40.24922359499622*pC[5][ii] + \
-                            21.908902300206645*pC[39][ii] - 73.48469228349533*pC[40][ii]);
-                     dudzp[ii]=0.03526184897173477*(15.491933384829668*pC[13][ii] - 51.96152422706631*pC[14][ii] - \
-                            15.491933384829668*pC[26][ii] - 40.24922359499622*pC[27][ii]);
-                     dvdxp[ii]=0.03526184897173477*(15.491933384829668*pC[4][ii] + 40.24922359499622*pC[5][ii] \
-                            - 21.908902300206645*pC[39][ii] + 73.48469228349533*pC[40][ii]);
-                     dvdyp[ii]=0.03526184897173477*(-12.649110640673518*pC[24][ii] - 32.863353450309965*pC[25][ii] \
-                            - 15.491933384829668*pC[28][ii] - 40.24922359499622*pC[29][ii]);
-                     dvdzp[ii]=0.03526184897173477*(-15.491933384829668*pC[2][ii] - 40.24922359499622*pC[3][ii] \
-                            - 15.491933384829668*pC[41][ii] + 51.96152422706631*pC[42][ii]);
-                     dwdxp[ii]=0.03526184897173477*(-15.491933384829668*pC[13][ii] + 51.96152422706631*pC[14][ii] \
-                            - 15.491933384829668*pC[26][ii] - 40.24922359499622*pC[27][ii]);
-                     dwdyp[ii]=0.03526184897173477*(-15.491933384829668*pC[2][ii] - 40.24922359499622*pC[3][ii] \
-                            + 15.491933384829668*pC[41][ii] - 51.96152422706631*pC[42][ii]);
-                     dwdzp[ii]=0.07052369794346953*(12.649110640673518*pC[24][ii] + 32.863353450309965*pC[25][ii]);
-
-                     dudtp[ii]=pC[50][ii];
-                     dvdtp[ii]=pC[51][ii];
-                     dwdtp[ii]=pC[52][ii];
-
-                     NXp[ii]=51.30326374980659*pC[42][ii]/(maxRadiusSpat*maxRadiusSpat);
-                     NYp[ii]=51.30326374980659*pC[14][ii]/(maxRadiusSpat*maxRadiusSpat);
-                     NZp[ii]=-72.55377138898045*pC[40][ii]/(maxRadiusSpat*maxRadiusSpat);
-
-                     daxdxp[ii]=0;
-                     daxdyp[ii]=0;
-                     daxdzp[ii]=0;
-                     daydxp[ii]=0;
-                     daydyp[ii]=0;
-                     daydzp[ii]=0;
-                     dazdxp[ii]=0;
-                     dazdyp[ii]=0;
-                     dazdzp[ii]=0;
-                  }
+                  ///end urvature and grad kinetic energy stuff
 
                }// end for loop through traj
-               
                if(write){
-                  for(int ii=0;ii<numInTraj-2*pm;ii++){
+                  for(int ii=0;ii<numInTraj;ii++){
+
                      fprintf(fpp, "%lf\t", xp[ii]);//1
                      fprintf(fpp, "%lf\t", yp[ii]);//2
                      fprintf(fpp, "%lf\t", zp[ii]);//3
                      fprintf(fpp, "%lf\t", up[ii]);//4
                      fprintf(fpp, "%lf\t", vp[ii]);//5
                      fprintf(fpp, "%lf\t", wp[ii]);//6
-                     fprintf(fpp, "%lf\t", axp[ii]);//7
-                     fprintf(fpp, "%lf\t", ayp[ii]);//8
-                     fprintf(fpp, "%lf\t", azp[ii]);//9
-                     
-                     fprintf(fpp, "%lf\t", dudxp[ii]);//10
-                     fprintf(fpp, "%lf\t", dudyp[ii]);//11
-                     fprintf(fpp, "%lf\t", dudzp[ii]);//12
-                     fprintf(fpp, "%lf\t", dvdxp[ii]);//13
-                     fprintf(fpp, "%lf\t", dvdyp[ii]);//14
-                     fprintf(fpp, "%lf\t", dvdzp[ii]);//15
-                     fprintf(fpp, "%lf\t", dwdxp[ii]);//16
-                     fprintf(fpp, "%lf\t", dwdyp[ii]);//17
-                     fprintf(fpp, "%lf\t", dwdzp[ii]);//18
-                     fprintf(fpp, "%lf\t", dudtp[ii]);//19
-                     fprintf(fpp, "%lf\t", dvdtp[ii]);//20
-                     fprintf(fpp, "%lf\t", dwdtp[ii]);//21
+                     fprintf(fpp, "%lf\t", dudxp[ii]);//7
+                     fprintf(fpp, "%lf\t", dudyp[ii]);//8
+                     fprintf(fpp, "%lf\t", dudzp[ii]);//9
+                     fprintf(fpp, "%lf\t", dvdxp[ii]);//10
+                     fprintf(fpp, "%lf\t", dvdyp[ii]);//11
+                     fprintf(fpp, "%lf\t", dvdzp[ii]);//12
+                     fprintf(fpp, "%lf\t", dwdxp[ii]);//13
+                     fprintf(fpp, "%lf\t", dwdyp[ii]);//14
+                     fprintf(fpp, "%lf\t", dwdzp[ii]);//15
+                     fprintf(fpp, "%lf\t", dudtp[ii]);//16
+                     fprintf(fpp, "%lf\t", dvdtp[ii]);//17
+                     fprintf(fpp, "%lf\t", dwdtp[ii]);//18
+
+                     fprintf(fpp, "%lf\t", axp[ii]);//19
+                     fprintf(fpp, "%lf\t", ayp[ii]);//20
+                     fprintf(fpp, "%lf\t", azp[ii]);//21
 
                      fprintf(fpp, "%lf\t", daxdxp[ii]);//22
                      fprintf(fpp, "%lf\t", daxdyp[ii]);//23
@@ -2287,12 +2892,52 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
                      fprintf(fpp, "%lf\t", dazdyp[ii]);//29
                      fprintf(fpp, "%lf\t", dazdzp[ii]);//30
 
-                     fprintf(fpp, "%lf\t", NXp[ii]);//31
-                     fprintf(fpp, "%lf\t", NYp[ii]);//32
-                     fprintf(fpp, "%lf\t", NZp[ii]);//33
+                     fprintf(fpp, "%lf\t", (double)startP);//31
+                     ///curvature and grad kinetic energy stuff
+                     if(mainForm->interpolRadioGroup->ItemIndex==0){
+                        fprintf(fpp, "%lf\n", (double)(ii));//32
 
-                     fprintf(fpp, "%lf\n", (double)(ii));//34
+                     }
+                     else{
+                        fprintf(fpp, "%lf\t", (double)(ii));//32
+                        fprintf(fpp, "%lf\t", nxp[ii]);//33
+                        fprintf(fpp, "%lf\t", nyp[ii]);//34
+                        fprintf(fpp, "%lf\t", nzp[ii]);//35
+                        fprintf(fpp, "%lf\t", dnxdxp[ii]);//36
+                        fprintf(fpp, "%lf\t", dnxdyp[ii]);//37
+                        fprintf(fpp, "%lf\t", dnxdzp[ii]);//38
+                        fprintf(fpp, "%lf\t", dnydxp[ii]);//39
+                        fprintf(fpp, "%lf\t", dnydyp[ii]);//40
+                        fprintf(fpp, "%lf\t", dnydzp[ii]);//41
+                        fprintf(fpp, "%lf\t", dnzdxp[ii]);//42
+                        fprintf(fpp, "%lf\t", dnzdyp[ii]);//43
+                        fprintf(fpp, "%lf\t", dnzdzp[ii]);//44
+                        fprintf(fpp, "%lf\t", dkdxp[ii]);//45
+                        fprintf(fpp, "%lf\t", dkdyp[ii]);//46
+                        fprintf(fpp, "%lf\n", dkdzp[ii]);//47
+                     }
+                     ///end urvature and grad kinetic energy stuff
 
+
+                     //%omega,strain,div,ref
+                     w1=dwdyp[ii]-dvdzp[ii];
+                     w2=dudzp[ii]-dwdxp[ii];
+                     w3=dvdxp[ii]-dudyp[ii];
+                     s11=dudxp[ii];
+                     s22=dvdyp[ii];
+                     s33=dwdzp[ii];
+                     s12=0.5*(dudyp[ii]+dvdxp[ii]);
+                     s13=0.5*(dudzp[ii]+dwdxp[ii]);
+                     s23=0.5*(dvdzp[ii]+dwdyp[ii]);
+                     //for weighting divergence
+                     div=fabs(s11+s22+s33);
+                     ref=fabs(s11)+fabs(s22)+fabs(s33);
+                     if(ref>0){
+                        divCriteria=div/ref;
+                     }
+                     else{
+                        divCriteria=0.95;
+                     }
                      //for weighting acceleration
                      //acceleration quality
                      dix=axp[ii]-dudtp[ii]-up[ii]*dudxp[ii]-vp[ii]*dudyp[ii]-wp[ii]*dudzp[ii];
@@ -2319,35 +2964,87 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
                      else{
                         accCriteria=0.95;
                      }
-                     if(accCriteria<0.1){
-                        count4++;
-                     }
-                     count9++;
-
-                     //diva quality
-                     w1=dwdyp[ii]-dvdzp[ii];
-                     w2=dudzp[ii]-dwdxp[ii];
-                     w3=dvdxp[ii]-dudyp[ii];
-                     enstrophy=w1*w1+w2*w2+w3*w3;
-                     s11=dudxp[ii];
-                     s22=dvdyp[ii];
-                     s33=dwdzp[ii];
-                     s12=0.5*(dudyp[ii]+dvdxp[ii]);
-                     s13=0.5*(dudzp[ii]+dwdxp[ii]);
-                     s23=0.5*(dvdzp[ii]+dwdyp[ii]);
+                     //here we make also a weighting according to diva=4Q
+                     wsq=w1*w1+w2*w2+w3*w3;
                      twosijsij=2.*(s11*s11+s22*s22+s33*s33
                                    +2.*(s12*s12+s13*s13+s23*s23)
                                    );
-                     Q=0.25*(enstrophy-twosijsij);
-
-                     if(ii>0 && ii<numInTraj-1){
-                        as11=0.5*(daxdxp[ii]+daxdxp[ii]);
-                        as22=0.5*(daydyp[ii]+daydyp[ii]);
-                        as33=0.5*(dazdzp[ii]+dazdzp[ii]);
-                        diva=as11+as22+as33;
+                     Q=(1./4.)*(wsq-twosijsij);
+                     diva=daxdxp[ii]+daydyp[ii]+dazdzp[ii];
+                     if(fabs(diva)+fabs(4*Q)>0){
+                        divaCriteria=fabs(diva+4*Q)/(fabs(diva)+fabs(4*Q));
                      }
+                     else{
+                        divaCriteria=0.95;
+                     }
+                     ///curvature and grad kinetic energy stuff
+                     if(mainForm->interpolRadioGroup->ItemIndex==1){
+                        //weighting according curvature check
+                        cnx=nxp[ii]*dnxdxp[ii]+nyp[ii]*dnxdyp[ii]+nzp[ii]*dnxdzp[ii];
+                        cny=nxp[ii]*dnydxp[ii]+nyp[ii]*dnydyp[ii]+nzp[ii]*dnydzp[ii];
+                        cnz=nxp[ii]*dnzdxp[ii]+nyp[ii]*dnzdyp[ii]+nzp[ii]*dnzdzp[ii];
+                        curvGrad=pow(cnx*cnx+cny*cny+cnz*cnz,0.5);
+                        vel=pow( pow(up[ii],2.)
+                                +pow(vp[ii],2.)
+                                +pow(wp[ii],2.),0.5);
+                        if(vel>0){
+                           vectorSq= pow(vp[ii]*azp[ii]-wp[ii]*ayp[ii],2.)
+                                    +pow(wp[ii]*axp[ii]-up[ii]*azp[ii],2.)
+                                    +pow(up[ii]*ayp[ii]-vp[ii]*axp[ii],2.);
+                           if(vectorSq>0){
+                              curv= pow(vectorSq,0.5)
+                                   /(vel*vel*vel);
+                           }
+                           else{
+                              curv=0.;
+                              curvGrad=0.;
+                           }
+                        }
+                        else{
+                           curv=0.;
+                           curvGrad=0.;
+                        }
+                        /*if(fabs(curvGrad)+fabs(curv)>0){
+                           curvCriteria=fabs(curvGrad-curv)/(fabs(curvGrad)+fabs(curv));
+                        }
+                        else{
+                           curvCriteria=0.95;
+                        }*/
+                        if(fabs(curvGrad)<fabs(curv)){
+                           curvCriteria=1.-fabs(curvGrad)/fabs(curv);
+                        }
+                        else{
+                           curvCriteria=1.-fabs(curv)/fabs(curvGrad);
+                        }
+                        //weighting according to grad k check
+                        acx=up[ii]*dudxp[ii]+vp[ii]*dudyp[ii]+wp[ii]*dudzp[ii];
+                        acy=up[ii]*dvdxp[ii]+vp[ii]*dvdyp[ii]+wp[ii]*dvdzp[ii];
+                        acz=up[ii]*dwdxp[ii]+vp[ii]*dwdyp[ii]+wp[ii]*dwdzp[ii];
 
-                     if(twosijsij<10000 && accCriteria<0.1){
+                        w1=dwdyp[ii]-dvdzp[ii];
+                        w2=dudzp[ii]-dwdxp[ii];
+                        w3=dvdxp[ii]-dudyp[ii];
+
+                        Lx=w2*wp[ii]-w3*vp[ii];
+                        Ly=w3*up[ii]-w1*wp[ii];
+                        Lz=w1*vp[ii]-w2*up[ii];
+                        dix=acx-Lx-dkdxp[ii];
+                        diy=acy-Ly-dkdyp[ii];
+                        diz=acz-Lz-dkdzp[ii];
+                        refx=fabs(acx)+fabs(Lx)+fabs(dkdxp[ii]);
+                        refy=fabs(acy)+fabs(Ly)+fabs(dkdyp[ii]);
+                        refz=fabs(acz)+fabs(Lz)+fabs(dkdzp[ii]);
+                        if(refx>0 && refy>0 && refz>0){
+                           gradCriteria=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz); //20.*absdi;//
+                        }
+                        else{
+                           gradCriteria=0.95;
+                        }
+
+                     }
+                     ///end urvature and grad kinetic energy stuff
+
+                     if(divCriteria<0.1){
                         count2++;
                         meanDiss=meanDiss+viscosity*twosijsij;
                         meanUisq=meanUisq+(1./1.)*( up[ii]*up[ii]
@@ -2357,16 +3054,40 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
                                                        +dvdyp[ii]*dvdyp[ii]
                                                        +dwdzp[ii]*dwdzp[ii]);
                      }
-
+                     if(accCriteria<0.1){
+                        count4++;
+                     }
+                     if(divaCriteria<0.1){
+                        count5++;
+                     }
+                     ///curvature and grad kinetic energy stuff
+                     if(mainForm->interpolRadioGroup->ItemIndex==1){
+                        if(curvCriteria<0.1){
+                           count7++;
+                        }
+                        if(gradCriteria<0.1){
+                           count8++;
+                        }
+                     }
+                     ///end urvature and grad kinetic energy stuff
                   }// end for
                   ////end of polynom business
-                  mainForm->meanPointsInSphereBEdit->Text=IntToStr((int)(pointList->meanPointsInSphereB/3.+0.5));
+                  mainForm->meanPointsInSphereBEdit->Text=IntToStr((int)(pointList->meanPointsInSphereB+0.5));
+                  mainForm->meanPointsInSphereEdit->Text =IntToStr((int)(pointList->meanPointsInSphere+0.5));
                   mainForm->succIntTrajEdit->Text=IntToStr((int)(pointList->succIntTraj+0.5));
                   if(count2>0){
                      mainForm->meanDissEdit->Text=IntToStr((int)(1.e6*pointList->meanDiss/(double)count2+0.5));
                      int Reynolds=(int)((pow(meanUisq/(double)count2,0.5)*pow(meanUisq/meanDudxsq,0.5))/viscosity+0.5);
                      mainForm->reEdit->Text=IntToStr(Reynolds);
-                     mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count9+0.5));
+                     mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count2/(double)pointList->count+0.5));
+                     mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count+0.5));
+                     mainForm->meanSuccessDivAEdit->Text=IntToStr((int)(100.*(double)pointList->count5/(double)pointList->count+0.5));
+                     ///curvature and grad kinetic energy stuff
+                     if(mainForm->interpolRadioGroup->ItemIndex==1){
+                        mainForm->meanSuccessCurvEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count+0.5));
+                        mainForm->meanSuccessGradKEdit->Text=IntToStr((int)(100.*(double)pointList->count8/(double)pointList->count+0.5));
+                     }
+                     ///end urvature and grad kinetic energy stuff
                      double dummy=(double)forMeanNumInTraj/(double)count6;
                      mainForm->meanEffectiveNumInTrajEdit->Text=IntToStr((int)((double)forEffectiveMeanNumInTraj/(double)count6+0.5));
                      mainForm->meanNumInTrajEdit->Text=IntToStr((int)(dummy+0.5));
@@ -2428,15 +3149,41 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
                   trajForm->Series19->Clear();
                   trajForm->Series20->Clear();
                   trajForm->Series21->Clear();
+                  
+                  
 
-                  for(int ii=0;ii<numInTraj-4;ii++){
+                  FILE *fppD;
+                  AnsiString name;
+                  name="trajDeriv.res";
+                  const char *filename;
+                  filename=name.c_str();
+                  fppD = fopen(filename,"w");
+                  for(int ii=0;ii<numInTraj;ii++){
+                     //%omega,strain,div,ref
+                     w1=dwdyp[ii]-dvdzp[ii];
+                     w2=dudzp[ii]-dwdxp[ii];
+                     w3=dvdxp[ii]-dudyp[ii];
+                     s11=dudxp[ii];
+                     s22=dvdyp[ii];
+                     s33=dwdzp[ii];
+                     s12=0.5*(dudyp[ii]+dvdxp[ii]);
+                     s13=0.5*(dudzp[ii]+dwdxp[ii]);
+                     s23=0.5*(dvdzp[ii]+dwdyp[ii]);
+
                      trajForm->Series1->AddXY((double)ii,axp[ii],'.',clTeeColor);
                      trajForm->Series2->AddXY((double)ii,ayp[ii],'.',clTeeColor);
                      trajForm->Series3->AddXY((double)ii,azp[ii],'.',clTeeColor);
 
+
                      trajForm->Series4->AddXY((double)ii,dudxp[ii],'.',clTeeColor);
                      trajForm->Series5->AddXY((double)ii,dvdyp[ii],'.',clTeeColor);
                      trajForm->Series6->AddXY((double)ii,dwdzp[ii],'.',clTeeColor);
+
+                     //store in trajecDeriv.res
+
+                     fprintf(fppD, "%lf\t", dudxp[ii]);
+                     fprintf(fppD, "%lf\t", dvdyp[ii]);
+                     fprintf(fppD, "%lf\n", dwdzp[ii]);
 
                      trajForm->Series13->AddXY((double)ii,dudtp[ii],'.',clTeeColor);
                      trajForm->Series14->AddXY((double)ii,dvdtp[ii],'.',clTeeColor);
@@ -2456,14 +3203,36 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
 
                      
                   }//end for
+                  fclose (fppD);
                   trajForm->Refresh();
                } //end else
-            }//end of if enough for traj
-                  
+            } //end if of polynom buisness
+            else{
+               trajForm->Series1->Clear();
+               trajForm->Series2->Clear();
+               trajForm->Series3->Clear();
+               trajForm->Series4->Clear();
+               trajForm->Series5->Clear();
+               trajForm->Series6->Clear();
+               trajForm->Series7->Clear();
+               trajForm->Series8->Clear();
+               trajForm->Series9->Clear();
+               trajForm->Series10->Clear();
+               trajForm->Series11->Clear();
+               trajForm->Series12->Clear();
+               trajForm->Series13->Clear();
+               trajForm->Series14->Clear();
+               trajForm->Series15->Clear();
+               trajForm->Series16->Clear();
+               trajForm->Series17->Clear();
+               trajForm->Series18->Clear();
+               trajForm->Series19->Clear();
+               trajForm->Series20->Clear();
+               trajForm->Series21->Clear();
+              
 
 
-
-
+            }//end else
          } // end if not occ und central
          else{
             trajForm->Series1->Clear();
@@ -2497,17 +3266,24 @@ void __fastcall TpointList::followTrajPointHarmonics(FILE *fpp, int t,int startP
 //---------------------------------------------------------------------------
 void __fastcall TpointList::FilterGrid(FILE *fpp,int t)
 {
-   int filtSize=0;
+   int filtSize=(int)(StrToFloat(mainForm->filtEdit->Text)/2);
    int numFields;
-
+   if(mainForm->interpolRadioGroup->ItemIndex==0){
       numFields=32;
-   
+   }
+   else{
+      numFields=47;
+   }
    double viscosity=StrToFloat(mainForm->viscEdit->Text);
    double polyConst=StrToFloat(mainForm->polyConstEdit->Text);
    deltaT=StrToFloat(mainForm->deltaTEdit->Text);
    c1=StrToFloat(mainForm->c1Edit->Text);
    c2=StrToFloat(mainForm->c2Edit->Text);
-  
+   double weightDivU=StrToFloat(mainForm->divEdit->Text);
+   double weightAcc=StrToFloat(mainForm->accEdit->Text);
+   double weightDivA=StrToFloat(mainForm->divaEdit->Text);
+   double weightCurv=StrToFloat(mainForm->curvEdit->Text);
+   double weightGradK=StrToFloat(mainForm->gradKEdit->Text);
    double su;
    double we[100];
    int orderA;
@@ -2592,7 +3368,11 @@ void __fastcall TpointList::FilterGrid(FILE *fpp,int t)
                   else{
                      divaCriteria=0.95;
                   }
-                  gridMem[k][i][30]= 0;
+                  gridMem[k][i][30]= weightDivU*divCriteria
+                                    +weightAcc*accCriteria
+                                    +weightDivA*divaCriteria;
+                                    //+weightCurv*curvCriteria
+                                    //+weightGradK*gradCriteria;
                   //end of estimate quality
                   su=su+1-gridMem[k][i][30];//success=0, bad=1;
                }
@@ -2718,7 +3498,886 @@ void __fastcall TpointList::FilterGrid(FILE *fpp,int t)
       }
    }
 }
+//---------------------------------------------------------------------------
+void __fastcall TpointList::followTrajPointLinQuadforAccDerivGrid(FILE *fpp, int t,int startPoint, bool write)
+{
+     int pCounterB, pCounter, rowIndex;
+     int numInTraj=0;
+     int startT, startP,ind;
+     double dist,dx,dy,dz,dt;
+     double Liu[5],Liv[5],Liw[5],Liax[4],Liay[4],Liaz[4];
+     double Linx[4],Liny[4],Linz[4],Lik[4];
+     double w1,w2,w3,s11,s12,s13,s22,s23,s33,vel,wsq,twosijsij,Q;
+     double div,ref,divCriteria;
+     double diva,divaCriteria;
+     double dix,diy,diz,refx,refy,refz,accCriteria,absdi;
+     double acx,acy,acz;
+     double cnx,cny,cnz,curvGrad,curv,curvCriteria,Lx,Ly,Lz,gradCriteria;
 
+     int time;
+     double minDistB[200];
+     int minDistBIndex[200];
+     bool contin;
+
+     int rank;
+
+     int start;
+     int end;
+     double polyConst=StrToFloat(mainForm->polyConstEdit->Text);
+
+     double maxRadiusSpat=StrToFloat(mainForm->radiusSpatEdit->Text);
+     double maxRadiusTemp=StrToFloat(mainForm->radiusTempEdit->Text);
+     int minCounter;
+
+     bool ok;
+     startT=t;
+
+     bool continuePast;
+     bool continueFuture;
+     int step[5];
+
+     double weightDivU=StrToFloat(mainForm->divEdit->Text);
+     double weightAcc=StrToFloat(mainForm->accEdit->Text);
+     double weightDivA=StrToFloat(mainForm->divaEdit->Text);
+     double weightCurv=StrToFloat(mainForm->curvEdit->Text);
+     double weightGradK=StrToFloat(mainForm->gradKEdit->Text);
+
+     double viscosity=StrToFloat(mainForm->viscEdit->Text);
+     deltaT=StrToFloat(mainForm->deltaTEdit->Text);
+     c1=StrToFloat(mainForm->c1Edit->Text);
+     c2=StrToFloat(mainForm->c2Edit->Text);
+
+     minX=0.001*StrToFloat(mainForm->minXEdit->Text);
+     minY=0.001*StrToFloat(mainForm->minYEdit->Text);
+     minZ=0.001*StrToFloat(mainForm->minZEdit->Text);
+     deltaX=0.001*StrToFloat(mainForm->deltaXEdit->Text);
+     deltaY=0.001*StrToFloat(mainForm->deltaYEdit->Text);
+     deltaZ=0.001*StrToFloat(mainForm->deltaZEdit->Text);
+     maxX=minX+deltaX*StrToFloat(mainForm->numXEdit->Text);
+     maxY=minY+deltaY*StrToFloat(mainForm->numYEdit->Text);
+     maxZ=minZ+deltaZ*StrToFloat(mainForm->numZEdit->Text);
+
+
+     if(t==pointList->firstFile){
+        pointList->readXUAPFile(t,true,false);
+     }
+     else{
+        pointList->readXUAPFile(t,false,false);
+     }
+
+     start=1;
+     end=point[2][0][0]+1;
+
+     int n;
+     for (double centerX=minX;centerX<maxX;centerX=centerX+deltaX){
+        for (double centerY=minY;centerY<maxY;centerY=centerY+deltaY){
+           for (double centerZ=minZ;centerZ<maxZ;centerZ=centerZ+deltaZ){
+              count++;
+              if(mainForm->spatialRadioGroup->ItemIndex==0){
+                 setAllMatrixesToZero(4);
+              }
+              if(mainForm->spatialRadioGroup->ItemIndex==1){
+                 setAllMatrixesToZero(10);
+              }
+              if(mainForm->spatialRadioGroup->ItemIndex==2){
+                 setAllMatrixesToZero(20);
+              }
+              for(int i=0;i<arraySize;i++){
+                 dis0[i]=0.;
+                 disA[i]=0.;
+                 disB[i]=0.;
+                 disC[i]=0.;
+                 disD[i]=0.;
+              }
+              for(int i=0;i<200+1;i++){
+                 minDistB[i]=1000+i;
+                 minDistBIndex[i]=1000+i;
+              }
+              int index=0;
+              for(int i=start;i<end;i++){
+                  time=2;
+                  if(point[2][i][11]>0.){
+                     //interpolieren und rausschreiben mit t,n (Zeit und Startpunkt)
+                     //%Da soll jetzt duidxj linear interpoliert werden
+                     //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                     //%die nächsten Punkte zu Punkt x,y,z, finden
+
+                     //BBBBBBBBBBBBBBB
+                     dist=pow(pow(point[time][i][2]-centerX,2.)+pow(point[time][i][3]-centerY,2.)+pow(point[time][i][4]-centerZ,2.),0.5);
+                     if(dist<maxRadiusSpat){
+                        minDistB[index]=dist;
+                        minDistBIndex[index]=i;
+                        index++;
+                     }
+                  }
+               }//for i loop
+               pCounterB=0;
+               pCounter=0;
+               int i;
+               for(int pointInd=0;pointInd<index;pointInd++){
+                  i=minDistBIndex[pointInd];
+                  if(point[time][i][11]>0.){
+                     dist=pow(pow(point[time][i][2]-centerX,2.)+pow(point[time][i][3]-centerY,2.)+pow(point[time][i][4]-centerZ,2.),0.5);
+                     disB[pCounterB]=(int)(dist*1000.+0.5);
+                     dx=point[time][i][2]-centerX;
+                     dy=point[time][i][3]-centerY;
+                     dz=point[time][i][4]-centerZ;
+                     B[pCounterB][0]=1.;
+                     B[pCounterB][1]=dx;
+                     B[pCounterB][2]=dy;
+                     B[pCounterB][3]=dz;
+                     if(mainForm->spatialRadioGroup->ItemIndex==1){
+                        B[pCounterB][4]=dx*dx;
+                        B[pCounterB][5]=dy*dy;
+                        B[pCounterB][6]=dz*dz;
+                        B[pCounterB][7]=dx*dy;
+                        B[pCounterB][8]=dx*dz;
+                        B[pCounterB][9]=dy*dz;
+                     }
+                     if(mainForm->spatialRadioGroup->ItemIndex==2){
+                        B[pCounterB][4]=dx*dx;
+                        B[pCounterB][5]=dy*dy;
+                        B[pCounterB][6]=dz*dz;
+                        B[pCounterB][7]=dx*dy;
+                        B[pCounterB][8]=dx*dz;
+                        B[pCounterB][9]=dy*dz;
+                        B[pCounterB][10]=dx*dx*dx;
+                        B[pCounterB][11]=dy*dy*dy;
+                        B[pCounterB][12]=dz*dz*dz;
+                        B[pCounterB][13]=dx*dx*dy;
+                        B[pCounterB][14]=dx*dx*dz;
+                        B[pCounterB][15]=dy*dy*dx;
+                        B[pCounterB][16]=dy*dy*dz;
+                        B[pCounterB][17]=dz*dz*dx;
+                        B[pCounterB][18]=dz*dz*dy;
+                        B[pCounterB][19]=dx*dy*dz;
+                     }
+                     YuB[pCounterB]=point[time][i][5];
+                     YvB[pCounterB]=point[time][i][6];
+                     YwB[pCounterB]=point[time][i][7];
+                     y0[pCounterB]=point[time][i][8];
+                     y1[pCounterB]=point[time][i][9];
+                     y2[pCounterB]=point[time][i][10];
+                     ///curvature and grad kinetic energy stuff
+                     if(write && mainForm->interpolRadioGroup->ItemIndex==1){
+                        vel=pow( pow(point[time][i][5],2.)
+                                +pow(point[time][i][6],2.)
+                                +pow(point[time][i][7],2.),0.5);
+                        y3[pCounterB]=point[time][i][5]/vel;
+                        y4[pCounterB]=point[time][i][6]/vel;
+                        y5[pCounterB]=point[time][i][7]/vel;
+                        y6[pCounterB]=0.5*vel*vel;//kinetic energy
+                     }
+                     ///end urvature and grad kinetic energy stuff
+                     pCounterB++;
+                     if(minDistB[pointInd]<maxRadiusTemp){
+                     /////////for du/dt likeold scheme!
+                     /////////////////////////////////
+                     step[0]=0;
+                     step[1]=-1;
+                     step[2]=-2;
+                     step[3]= 1;
+                     step[4]= 2;
+                     ind=i;
+                     continuePast=true;
+                     continueFuture=true;
+                     for(int j=0;j<5;j++){
+                        if((j<3 && continuePast) || (j>2 && continueFuture)){
+                           dx=point[time+step[j]][ind][2]-centerX;
+                           dy=point[time+step[j]][ind][3]-centerY;
+                           dz=point[time+step[j]][ind][4]-centerZ;
+                           A[pCounter][0]=1.;
+                           A[pCounter][1]=dx;
+                           A[pCounter][2]=dy;
+                           A[pCounter][3]=dz;
+                           A[pCounter][4]=(double)step[j]*deltaT;
+
+                           YuA[pCounter]=point[time+step[j]][ind][5];
+                           YvA[pCounter]=point[time+step[j]][ind][6];
+                           YwA[pCounter]=point[time+step[j]][ind][7];
+                           pCounter++;
+                           if(j<2){
+                              if(point[time+step[j]][ind][0]>0){
+                                 ind=point[time+step[j]][ind][0];
+                              }
+                              else{
+                                  continuePast=false;
+                              }
+                           }
+                           if(j>2){
+                              if(point[time+step[j]][ind][1]>0){
+                                 ind=point[time+step[j]][ind][1];
+                              }
+                              else{
+                                  continueFuture=false;
+                              }
+                           }
+                        }
+                        if(j==2){
+                           ind=i;
+                           step[2]=0;
+                           if(point[time+step[j]][ind][1]>0){
+                              ind=point[time+step[j]][ind][1];
+                           }
+                           else{
+                              continueFuture=false;
+                           }
+                        }
+                     }
+                     /////////////////////////////////
+                     }
+                  }
+               }
+
+
+               meanPointsInSphereB=(meanPointsInSphereB*(double)(count-1)+(double)pCounterB)/(double)count;
+               meanPointsInSphere =(meanPointsInSphere *(double)(count-1)+(double)pCounter )/(double)count;
+               if(mainForm->spatialRadioGroup->ItemIndex==0){
+                  minCounter=3;
+               }
+               if(mainForm->spatialRadioGroup->ItemIndex==1){
+                  minCounter=9;
+               }
+               if(mainForm->spatialRadioGroup->ItemIndex==2){
+                  minCounter=19;
+               }
+               if(pCounterB>minCounter ){ // %jetzt wird endlich Punkt1 interpoliert
+                  //%correct x,y,z with center of interpolation!
+
+                  contin=true;
+                  if(mainForm->spatialRadioGroup->ItemIndex==0){
+                     makeBT(pCounterB,4);
+                     makeBTB(pCounterB,4);
+                     makeBTY(pCounterB,4,1);
+                     contin=solveB(pCounterB,4);
+                  }
+                  if(mainForm->spatialRadioGroup->ItemIndex==1){
+                     makeBT(pCounterB,10);
+                     makeBTB(pCounterB,10);
+                     makeBTY(pCounterB,10,1);
+                     contin=solveB(pCounterB,10);
+                  }
+                  if(mainForm->spatialRadioGroup->ItemIndex==2){
+                     makeBT(pCounterB,20);
+                     makeBTB(pCounterB,20);
+                     makeBTY(pCounterB,20,1);
+                     contin=solveB(pCounterB,20);
+                  }
+                  if(contin){
+                     Liu[0]=X[0];
+                     Liu[1]=X[1];
+                     Liu[2]=X[2];
+                     Liu[3]=X[3];
+                     if(pCounter>4){
+                        makeAT(pCounter,5);
+                        makeATA(pCounter,5);
+                        makeATY(pCounter,5,1);
+                        solve(pCounter,5);
+                        Liu[4]=X[4];
+                     }
+                     else{
+                        contin=false;
+                     }
+                     if(contin){
+                        if(mainForm->spatialRadioGroup->ItemIndex==0){
+                           makeBT(pCounterB,4);
+                           makeBTB(pCounterB,4);
+                           makeBTY(pCounterB,4,2);
+                           contin=solveB(pCounterB,4);
+                        }
+                        if(mainForm->spatialRadioGroup->ItemIndex==1){
+                           makeBT(pCounterB,10);
+                           makeBTB(pCounterB,10);
+                           makeBTY(pCounterB,10,2);
+                           contin=solveB(pCounterB,10);
+                        }
+                        if(mainForm->spatialRadioGroup->ItemIndex==2){
+                           makeBT(pCounterB,20);
+                           makeBTB(pCounterB,20);
+                           makeBTY(pCounterB,20,2);
+                           contin=solveB(pCounterB,20);
+                        }
+                        if(contin){
+                           Liv[0]=X[0];
+                           Liv[1]=X[1];
+                           Liv[2]=X[2];
+                           Liv[3]=X[3];
+                           if(pCounter>4){
+                              makeAT(pCounter,5);
+                              makeATA(pCounter,5);
+                              makeATY(pCounter,5,2);
+                              solve(pCounter,5);
+                              Liv[4]=X[4];
+                           }
+                           else{
+                              contin=false;
+                           }
+                           if(contin){
+                              if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                 makeBT(pCounterB,4);
+                                 makeBTB(pCounterB,4);
+                                 makeBTY(pCounterB,4,3);
+                                 contin=solveB(pCounterB,4);
+                              }
+                              if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                 makeBT(pCounterB,10);
+                                 makeBTB(pCounterB,10);
+                                 makeBTY(pCounterB,10,3);
+                                 contin=solveB(pCounterB,10);
+                              }
+                              if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                 makeBT(pCounterB,20);
+                                 makeBTB(pCounterB,20);
+                                 makeBTY(pCounterB,20,3);
+                                 contin=solveB(pCounterB,20);
+                              }
+                              if(contin){
+                                 Liw[0]=X[0];
+                                 Liw[1]=X[1];
+                                 Liw[2]=X[2];
+                                 Liw[3]=X[3];
+                                 if(pCounter>4){
+                                    makeAT(pCounter,5);
+                                    makeATA(pCounter,5);
+                                    makeATY(pCounter,5,3);
+                                    solve(pCounter,5);
+                                    Liw[4]=X[4];
+                                 }
+                                 else{
+                                    contin=false;
+                                 }
+                                 if(contin){
+                                    if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                       makeBT(pCounterB,4);
+                                       makeBTB(pCounterB,4);
+                                       makeBTY(pCounterB,4,4);
+                                       contin=solveB(pCounterB,4);
+                                    }
+                                    if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                       makeBT(pCounterB,10);
+                                       makeBTB(pCounterB,10);
+                                       makeBTY(pCounterB,10,4);
+                                       contin=solveB(pCounterB,10);
+                                    }
+                                    if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                       makeBT(pCounterB,20);
+                                       makeBTB(pCounterB,20);
+                                       makeBTY(pCounterB,20,4);
+                                       contin=solveB(pCounterB,20);
+                                    }
+                                    if(contin){
+                                       Liax[0]=X[0];
+                                       Liax[1]=X[1];
+                                       Liax[2]=X[2];
+                                       Liax[3]=X[3];
+                                       if(contin){
+                                          if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                             makeBT(pCounterB,4);
+                                             makeBTB(pCounterB,4);
+                                             makeBTY(pCounterB,4,5);
+                                             contin=solveB(pCounterB,4);
+                                          }
+                                          if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                             makeBT(pCounterB,10);
+                                             makeBTB(pCounterB,10);
+                                             makeBTY(pCounterB,10,5);
+                                             contin=solveB(pCounterB,10);
+                                          }
+                                          if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                             makeBT(pCounterB,20);
+                                             makeBTB(pCounterB,20);
+                                             makeBTY(pCounterB,20,5);
+                                             contin=solveB(pCounterB,20);
+                                          }
+                                          if(contin){
+                                             Liay[0]=X[0];
+                                             Liay[1]=X[1];
+                                             Liay[2]=X[2];
+                                             Liay[3]=X[3];
+                                             if(contin){
+                                                if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                   makeBT(pCounterB,4);
+                                                   makeBTB(pCounterB,4);
+                                                   makeBTY(pCounterB,4,6);
+                                                   contin=solveB(pCounterB,4);
+                                                }
+                                                if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                   makeBT(pCounterB,10);
+                                                   makeBTB(pCounterB,10);
+                                                   makeBTY(pCounterB,10,6);
+                                                   contin=solveB(pCounterB,10);
+                                                }
+                                                if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                   makeBT(pCounterB,20);
+                                                   makeBTB(pCounterB,20);
+                                                   makeBTY(pCounterB,20,6);
+                                                   contin=solveB(pCounterB,20);
+                                                }
+                                                if(contin){
+                                                   Liaz[0]=X[0];
+                                                   Liaz[1]=X[1];
+                                                   Liaz[2]=X[2];
+                                                   Liaz[3]=X[3];
+                                                   if(contin){
+                                                      ///curvature and grad kinetic energy stuff
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==1){
+                                                         //nx
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,7);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,7);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,7);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         vel=pow( pow(Liu[0],2.)
+                                                                 +pow(Liv[0],2.)
+                                                                 +pow(Liw[0],2.),0.5);
+                                                         Linx[0]=Liu[0]/vel;
+                                                         Linx[1]=X[1];
+                                                         Linx[2]=X[2];
+                                                         Linx[3]=X[3];
+                                                         //ny
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,8);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,8);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,8);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+
+                                                         Liny[0]=Liv[0]/vel;
+                                                         Liny[1]=X[1];
+                                                         Liny[2]=X[2];
+                                                         Liny[3]=X[3];
+                                                         //nz
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,9);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,9);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,9);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+
+                                                         Linz[0]=Liw[0]/vel;
+                                                         Linz[1]=X[1];
+                                                         Linz[2]=X[2];
+                                                         Linz[3]=X[3];
+                                                         //grad k
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==0){
+                                                            makeBT(pCounterB,4);
+                                                            makeBTB(pCounterB,4);
+                                                            makeBTY(pCounterB,4,10);
+                                                            contin=solveB(pCounterB,4);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==1){
+                                                            makeBT(pCounterB,10);
+                                                            makeBTB(pCounterB,10);
+                                                            makeBTY(pCounterB,10,10);
+                                                            contin=solveB(pCounterB,10);
+                                                         }
+                                                         if(mainForm->spatialRadioGroup->ItemIndex==2){
+                                                            makeBT(pCounterB,20);
+                                                            makeBTB(pCounterB,20);
+                                                            makeBTY(pCounterB,20,10);
+                                                            contin=solveB(pCounterB,20);
+                                                         }
+                                                         
+                                                         Lik[0]=0.5*vel*vel;
+                                                         Lik[1]=X[1];
+                                                         Lik[2]=X[2];
+                                                         Lik[3]=X[3];
+                                                      }
+                                                      ///end urvature and grad kinetic energy stuff
+                                                      traj[0][ 0]=centerX;//x
+                                                      traj[0][ 1]=centerY;//y
+                                                      traj[0][ 2]=centerZ;//z
+                                                      traj[0][ 3]=Liu[0]; //u
+                                                      traj[0][ 4]=Liv[0]; //v
+                                                      traj[0][ 5]=Liw[0]; //w
+                                                      traj[0][ 6]=Liu[1]; //du/dx
+                                                      traj[0][ 7]=Liu[2]; //du/dy
+                                                      traj[0][ 8]=Liu[3]; //du/dz
+                                                      traj[0][ 9]=Liv[1]; //dv/dx
+                                                      traj[0][10]=Liv[2]; //dv/dy
+                                                      traj[0][11]=Liv[3]; //dv/dz
+                                                      traj[0][12]=Liw[1]; //dw/dx
+                                                      traj[0][13]=Liw[2]; //dw/dy
+                                                      traj[0][14]=Liw[3]; //dw/dz
+                                                      traj[0][15]=Liu[4]; //du/dt
+                                                      traj[0][16]=Liv[4]; //dv/dt
+                                                      traj[0][17]=Liw[4]; //dw/dt
+                                                      traj[0][18]=Liax[0]; //ax
+                                                      traj[0][19]=Liay[0]; //ay
+                                                      traj[0][20]=Liaz[0]; //az
+                                                      traj[0][21]=Liax[1]; //da_x/dx
+                                                      traj[0][22]=Liax[2]; //da_x/dy
+                                                      traj[0][23]=Liax[3]; //da_x/dz
+                                                      traj[0][24]=Liay[1]; //da_y/dx
+                                                      traj[0][25]=Liay[2]; //da_y/dy
+                                                      traj[0][26]=Liay[3]; //da_y/dz
+                                                      traj[0][27]=Liaz[1]; //da_z/dx
+                                                      traj[0][28]=Liaz[2]; //da_z/dy
+                                                      traj[0][29]=Liaz[3]; //da_z/dz
+
+
+                                                      //%omega,strain,div,ref
+                                                      w1=Liw[2]-Liv[3];
+                                                      w2=Liu[3]-Liw[1];
+                                                      w3=Liv[1]-Liu[2];
+                                                      s11=Liu[1];
+                                                      s22=Liv[2];
+                                                      s33=Liw[3];
+                                                      s12=0.5*(Liu[2]+Liv[1]);
+                                                      s13=0.5*(Liu[3]+Liw[1]);
+                                                      s23=0.5*(Liv[3]+Liw[2]);
+                                                      //for weighting divergence
+                                                      div=fabs(s11+s22+s33);
+                                                      ref=fabs(s11)+fabs(s22)+fabs(s33);
+                                                      if(ref>0){
+                                                         divCriteria=div/ref;
+                                                      }
+                                                      else{
+                                                         divCriteria=0.95;
+                                                      }
+                                                      //for weighting acceleration
+                                                      //acceleration quality
+                                                      dix=Liax[0]-Liu[4]-Liu[0]*Liu[1]-Liv[0]*Liu[2]-Liw[0]*Liu[3];
+                                                      diy=Liay[0]-Liv[4]-Liu[0]*Liv[1]-Liv[0]*Liv[2]-Liw[0]*Liv[3];
+                                                      diz=Liaz[0]-Liw[4]-Liu[0]*Liw[1]-Liv[0]*Liw[2]-Liw[0]*Liw[3];
+                                                      absdi=pow(dix*dix+diy*diy+diz*diz,0.5);
+                                                      refx= fabs(Liax[0])
+                                                           +fabs(Liu[4])
+                                                           +fabs( Liu[0]*Liu[1]
+                                                                 +Liv[0]*Liu[2]
+                                                                 +Liw[0]*Liu[3]);
+                                                      refy= fabs(Liay[0])
+                                                           +fabs(Liv[4])
+                                                           +fabs( Liu[0]*Liv[1]
+                                                                 +Liv[0]*Liv[2]
+                                                                 +Liw[0]*Liv[3]);
+                                                      refz= fabs(Liaz[0])
+                                                           +fabs(Liw[4])
+                                                           +fabs( Liu[0]*Liw[1]
+                                                                 +Liv[0]*Liw[2]
+                                                                 +Liw[0]*Liw[3]);
+                                                      if(refx>0 && refy>0 && refz>0){
+                                                         accCriteria=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz); //20.*absdi;//
+                                                      }
+                                                      else{
+                                                         accCriteria=0.95;
+                                                      }
+                                                      //here we make also a weighting according to diva=4Q
+                                                      wsq=w1*w1+w2*w2+w3*w3;
+                                                      twosijsij=2.*(s11*s11+s22*s22+s33*s33
+                                                                    +2.*(s12*s12+s13*s13+s23*s23)
+                                                                   );
+                                                      Q=(1./4.)*(wsq-twosijsij);
+                                                      diva=Liax[1]+Liay[2]+Liaz[3];
+                                                      if(fabs(diva)+fabs(4*Q)>0){
+                                                         divaCriteria=fabs(diva+4*Q)/(fabs(diva)+fabs(4*Q));
+                                                      }
+                                                      else{
+                                                         divaCriteria=0.95;
+                                                      }
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==0){
+                                                         traj[0][30]= weightDivU*divCriteria
+                                                                             +weightAcc*accCriteria
+                                                                             +weightDivA*divaCriteria;
+                                                      }
+                                                      if(traj[0][30]>0.95){
+                                                         traj[0][30]=0.95;
+                                                      }
+                                                      traj[0][31]=divCriteria;
+                                                      ///curvature and grad kinetic energy stuff
+                                                      if(mainForm->interpolRadioGroup->ItemIndex==1){
+                                                          ///traj[0][33..47]
+                                                          traj[0][33]=Linx[0]; //nx
+                                                          traj[0][34]=Liny[0]; //ny
+                                                          traj[0][35]=Linz[0]; //nz
+                                                          traj[0][36]=Linx[1]; //dn_x/dx
+                                                          traj[0][37]=Linx[2]; //dn_x/dy
+                                                          traj[0][38]=Linx[3]; //dn_x/dz
+                                                          traj[0][39]=Liny[1]; //dn_y/dx
+                                                          traj[0][40]=Liny[2]; //dn_y/dy
+                                                          traj[0][41]=Liny[3]; //dn_y/dz
+                                                          traj[0][42]=Linz[1]; //dn_z/dx
+                                                          traj[0][43]=Linz[2]; //dn_z/dy
+                                                          traj[0][44]=Linz[3]; //dn_z/dz
+                                                          traj[0][45]=Lik[1]; //dk/dx
+                                                          traj[0][46]=Lik[2]; //dk/dy
+                                                          traj[0][47]=Lik[3]; //dk/dz
+                                                          //weighting according curvature check
+                                                          cnx=Linx[0]*Linx[1]+Liny[0]*Linx[2]+Linz[0]*Linx[3];
+                                                          cny=Linx[0]*Liny[1]+Liny[0]*Liny[2]+Linz[0]*Liny[3];
+                                                          cnz=Linx[0]*Linz[1]+Liny[0]*Linz[2]+Linz[0]*Linz[3];
+                                                          curvGrad=pow(cnx*cnx+cny*cny+cnz*cnz,0.5);
+                                                          vel=pow( pow(Liu[0],2.)
+                                                                  +pow(Liv[0],2.)
+                                                                  +pow(Liw[0],2.),0.5);
+                                                          curv= pow( pow(Liv[0]*Liaz[0]-Liw[0]*Liay[0],2.)
+                                                                    +pow(Liw[0]*Liax[0]-Liu[0]*Liaz[0],2.)
+                                                                    +pow(Liu[0]*Liay[0]-Liv[0]*Liax[0],2.)
+                                                                    ,0.5)
+                                                               /(vel*vel*vel);
+                                                          /*if(fabs(curvGrad)+fabs(curv)>0){
+                                                             curvCriteria=fabs(curvGrad-curv)/(fabs(curvGrad)+fabs(curv));
+                                                          }
+                                                          else{
+                                                             curvCriteria=0.95;
+                                                          }*/
+                                                          if(fabs(curvGrad)<fabs(curv)){
+                                                             curvCriteria=1.-fabs(curvGrad)/fabs(curv);
+                                                          }
+                                                          else{
+                                                             curvCriteria=1.-fabs(curv)/fabs(curvGrad);
+                                                          }
+                                                          //weighting according to grad k check
+                                                          acx=Liu[0]*Liu[1]+Liv[0]*Liu[2]+Liw[0]*Liu[3];
+                                                          acy=Liu[0]*Liv[1]+Liv[0]*Liv[2]+Liw[0]*Liv[3];
+                                                          acz=Liu[0]*Liw[1]+Liv[0]*Liw[2]+Liw[0]*Liw[3];
+                                                          w1=Liw[2]-Liv[3];
+                                                          w2=Liu[3]-Liw[1];
+                                                          w3=Liv[1]-Liu[2];
+                                                          Lx=w2*Liw[0]-w3*Liv[0];
+                                                          Ly=w3*Liu[0]-w1*Liw[0];
+                                                          Lz=w1*Liv[0]-w2*Liu[0];
+                                                          dix=acx-Lx-Lik[1];
+                                                          diy=acy-Ly-Lik[2];
+                                                          diz=acz-Lz-Lik[3];
+                                                          refx=fabs(acx)+fabs(Lx)+fabs(Lik[1]);
+                                                          refy=fabs(acy)+fabs(Ly)+fabs(Lik[2]);
+                                                          refz=fabs(acz)+fabs(Lz)+fabs(Lik[3]);
+                                                          if(refx>0 && refy>0 && refz>0){
+                                                             gradCriteria=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz); //20.*absdi;//
+                                                          }
+                                                          else{
+                                                             gradCriteria=0.95;
+                                                          }
+                                                          traj[0][30]= weightDivU*divCriteria
+                                                                              +weightAcc*accCriteria
+                                                                              +weightDivA*divaCriteria
+                                                                              +weightCurv*curvCriteria
+                                                                              +weightGradK*gradCriteria;
+                                                      }
+                                                      ///end curvature and grad kinetic energy stuff
+                                                   }
+                                                }
+                                             }
+                                          }
+                                       }
+                                    }
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }// end of if pCOunter>3 solve...
+               if(!(pCounterB>minCounter ) || !(contin)){
+                  traj[0][ 0]=centerX;
+                  traj[0][ 1]=centerY;
+                  traj[0][ 2]=centerZ;
+                  traj[0][ 3]=0;
+                  traj[0][ 4]=0;
+                  traj[0][ 5]=0;
+                  traj[0][ 6]=0;
+                  traj[0][ 7]=0;
+                  traj[0][ 8]=0;
+                  traj[0][ 9]=0.;
+                  traj[0][10]=0.;
+                  traj[0][11]=0.;
+                  traj[0][12]=0.;
+                  traj[0][13]=0.;
+                  traj[0][14]=0.;
+                  traj[0][15]=0.;
+                  traj[0][16]=0.;
+                  traj[0][17]=0.;
+                  traj[0][18]=0;
+                  traj[0][19]=0;
+                  traj[0][20]=0;
+                  traj[0][21]=0.;
+                  traj[0][22]=0.;
+                  traj[0][23]=0.;
+                  traj[0][24]=0;
+                  traj[0][25]=0;
+                  traj[0][26]=0;
+                  traj[0][27]=0;
+                  traj[0][28]=0;
+                  traj[0][29]=0;
+
+                  traj[0][30]=1.;   //Wichtig
+                  traj[0][31]=(double)pCounterB;
+
+                  ///curvature and grad kinetic energy stuff
+                  if(mainForm->interpolRadioGroup->ItemIndex==1){
+                     ///traj[0][33..47]
+                     traj[0][33]=0.;
+                     traj[0][34]=0.;
+                     traj[0][35]=0.;
+                     traj[0][36]=0.;
+                     traj[0][37]=0.;
+                     traj[0][38]=0.;
+                     traj[0][39]=0.;
+                     traj[0][40]=0.;
+                     traj[0][41]=0.;
+                     traj[0][42]=0.;
+                     traj[0][43]=0.;
+                     traj[0][44]=0;
+                     traj[0][45]=0;
+                     traj[0][46]=0;
+                     traj[0][47]=0;
+                  }
+                  ///end urvature and grad kinetic energy stuff
+                  divCriteria=1.;
+                  accCriteria=1.;
+                  divaCriteria=1.;
+                  curvCriteria=1.;
+                  gradCriteria=1.;
+                  twosijsij=0;
+               }
+               //end of if(pCounterB>minCounter ){
+
+
+               fprintf(fpp, "%lf\t", traj[0][0]);//1
+               fprintf(fpp, "%lf\t", traj[0][1]);//2
+               fprintf(fpp, "%lf\t", traj[0][2]);//3
+               fprintf(fpp, "%lf\t", traj[0][3]);//4
+               fprintf(fpp, "%lf\t", traj[0][4]);//5
+               fprintf(fpp, "%lf\t", traj[0][5]);//6
+               fprintf(fpp, "%lf\t", traj[0][6]);//7
+               fprintf(fpp, "%lf\t", traj[0][7]);//8
+               fprintf(fpp, "%lf\t", traj[0][8]);//9
+               fprintf(fpp, "%lf\t", traj[0][9]);//10
+               fprintf(fpp, "%lf\t", traj[0][10]);//11
+               fprintf(fpp, "%lf\t", traj[0][11]);//12
+               fprintf(fpp, "%lf\t", traj[0][12]);//13
+               fprintf(fpp, "%lf\t", traj[0][13]);//14
+               fprintf(fpp, "%lf\t", traj[0][14]);//15
+               fprintf(fpp, "%lf\t", traj[0][15]);//16
+               fprintf(fpp, "%lf\t", traj[0][16]);//17
+               fprintf(fpp, "%lf\t", traj[0][17]);//18
+
+               fprintf(fpp, "%lf\t", traj[0][18]);//19
+               fprintf(fpp, "%lf\t", traj[0][19]);//20
+               fprintf(fpp, "%lf\t", traj[0][20]);//21
+
+               fprintf(fpp, "%lf\t", traj[0][21]);//22
+               fprintf(fpp, "%lf\t", traj[0][22]);//23
+               fprintf(fpp, "%lf\t", traj[0][23]);//24
+               fprintf(fpp, "%lf\t", traj[0][24]);//25
+               fprintf(fpp, "%lf\t", traj[0][25]);//26
+               fprintf(fpp, "%lf\t", traj[0][26]);//27
+               fprintf(fpp, "%lf\t", traj[0][27]);//28
+               fprintf(fpp, "%lf\t", traj[0][28]);//29
+               fprintf(fpp, "%lf\t", traj[0][29]);//30
+
+               fprintf(fpp, "%lf\t", traj[0][30]);//31allcrieteria
+               ///curvature and grad kinetic energy stuff
+               if(mainForm->interpolRadioGroup->ItemIndex==0){
+                  fprintf(fpp, "%lf\n", (double)pCounterB);//32reldiv
+               }
+               else{
+                  fprintf(fpp, "%lf\t", (double)pCounterB);//32//reldiv
+                  fprintf(fpp, "%lf\t", traj[0][33]);//33
+                  fprintf(fpp, "%lf\t", traj[0][34]);//34
+                  fprintf(fpp, "%lf\t", traj[0][35]);//35
+                  fprintf(fpp, "%lf\t", traj[0][36]);//36
+                  fprintf(fpp, "%lf\t", traj[0][37]);//37
+                  fprintf(fpp, "%lf\t", traj[0][38]);//38
+                  fprintf(fpp, "%lf\t", traj[0][39]);//39
+                  fprintf(fpp, "%lf\t", traj[0][40]);//40
+                  fprintf(fpp, "%lf\t", traj[0][41]);//41
+                  fprintf(fpp, "%lf\t", traj[0][42]);//42
+                  fprintf(fpp, "%lf\t", traj[0][43]);//43
+                  fprintf(fpp, "%lf\t", traj[0][44]);//44
+                  fprintf(fpp, "%lf\t", traj[0][45]);//45
+                  fprintf(fpp, "%lf\t", traj[0][46]);//46
+                  fprintf(fpp, "%lf\n", traj[0][47]);//47
+               }
+               ///end urvature and grad kinetic energy stuff
+
+               if(divCriteria<0.1){
+                  count2++;
+                  meanDiss=meanDiss+viscosity*twosijsij;
+                  meanUisq=meanUisq+(1./1.)*( traj[0][3]*traj[0][3]
+                                             +traj[0][4]*traj[0][4]
+                                             +traj[0][5]*traj[0][5]);
+                  meanDudxsq=meanDudxsq+(1./1.)*( traj[0][6]*traj[0][6]
+                                                 +traj[0][10]*traj[0][10]
+                                                 +traj[0][14]*traj[0][14]);
+               }
+               if(accCriteria<0.1){
+                  count4++;
+               }
+               if(divaCriteria<0.1){
+                  count5++;
+               }
+               ///curvature and grad kinetic energy stuff
+               if(mainForm->interpolRadioGroup->ItemIndex==1){
+                  if(curvCriteria<0.1){
+                     count7++;
+                  }
+                  if(gradCriteria<0.1){
+                     count8++;
+                  }
+               }
+           }//z loop
+        }//y loop
+     }//x loop
+
+
+
+     mainForm->meanPointsInSphereBEdit->Text=IntToStr((int)(pointList->meanPointsInSphereB+0.5));
+     mainForm->meanPointsInSphereEdit->Text =IntToStr((int)(pointList->meanPointsInSphere+0.5));
+     if(count2>0){
+        mainForm->meanDissEdit->Text=IntToStr((int)(1.e6*pointList->meanDiss/(double)count2+0.5));
+        int Reynolds=(int)((pow(meanUisq/(double)count2,0.5)*pow(meanUisq/meanDudxsq,0.5))/viscosity+0.5);
+        mainForm->reEdit->Text=IntToStr(Reynolds);
+        mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count2/(double)pointList->count+0.5));
+        mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count+0.5));
+        mainForm->meanSuccessDivAEdit->Text=IntToStr((int)(100.*(double)pointList->count5/(double)pointList->count+0.5));
+        ///curvature and grad kinetic energy stuff
+        if(mainForm->interpolRadioGroup->ItemIndex==1){
+           mainForm->meanSuccessCurvEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count+0.5));
+           mainForm->meanSuccessGradKEdit->Text=IntToStr((int)(100.*(double)pointList->count8/(double)pointList->count+0.5));
+        }
+     }
+     mainForm->Refresh();
+}
+//----------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
@@ -2732,7 +4391,7 @@ void __fastcall TpointList::makeVolumes()
      bool ok;
 
      double maxDist=StrToFloat(mainForm->maxDistEdit->Text);
-     int minRemain=0;
+     int minRemain=StrToInt(mainForm->minRemainEdit->Text);
 
      //setPath and Files
      setPathAndFiles3();
@@ -3425,21 +5084,338 @@ void __fastcall TpointList::makeFilesForCorrelations()
         mainForm->Refresh();
      }
 }
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::reLink()
+{
+     double dist,radius,centerX,centerY,centerZ,u,v,w,x,y,z,vel,velNew;
+     int pCounter,gain;
 
+     radius=1.;//StrToFloat(mainForm->sphereEdit->Text);
+
+     //loop through files
+     for(int i=0;i<51;i++){
+        for(int j=0;j<5000;j++){
+           for(int k=0;k<32;k++){
+              trajec[i][j][k]=0.;
+           }
+        }
+     }
+     for (int i=firstFile;i<lastFile+1;i++){
+        gain=0;
+        mainForm->fileNum2Edit->Text=IntToStr(i);
+        mainForm->Refresh();
+        baseName="trajPoint.";
+        readTrajPointFile(i);
+        baseName="ptv_is.";
+        readPTVFile(i,-1);
+        readPTVFile(i,0);
+        readPTVFile(i,1);
+        
+        int nP=point[10][0][0];
+        for(int i=1;i<nP+1;i++){
+           if(point[10][i][0]<1 || point[10][i][1]<1){
+              //search through t-50 files
+              setAllMatrixesToZero(4);
+              pCounter=0;
+              centerX=point[10][i][2];
+              centerY=point[10][i][3];
+              centerZ=point[10][i][4];
+              for(int k=0;k<51;k++){
+                 for(int l=1;l<trajec[k][0][0]+1;l++){
+                    //if close enough it becomes candidate
+                    if(-50+k+trajec[k][l][28]==0){
+                       dist=pow( pow(point[10][i][2]-trajec[k][l][0],2.)
+                                +pow(point[10][i][3]-trajec[k][l][1],2.)
+                                +pow(point[10][i][4]-trajec[k][l][2],2.),0.5);
+                       if(dist<radius && pCounter<arraySize){
+                          dis[pCounter]=(int)(dist*1000.+0.5);
+                          A[pCounter][0]=1.;
+                          A[pCounter][1]=trajec[k][l][0];
+                          A[pCounter][2]=trajec[k][l][1];
+                          A[pCounter][3]=trajec[k][l][2];
+                          Yu[pCounter]=trajec[k][l][3];
+                          Yv[pCounter]=trajec[k][l][4];
+                          Yw[pCounter]=trajec[k][l][5];
+                          pCounter++;
+                       }
+                    }
+                 }
+              }
+              if(pCounter>3){ // %jetzt wird endlich Punkt1 interpoliert
+                  //%correct x,y,z with center of interpolation!
+                  for(int m=0;m<pCounter;m++){
+                     A[m][1]=A[m][1]-centerX;
+                     A[m][2]=A[m][2]-centerY;
+                     A[m][3]=A[m][3]-centerZ;
+                     if(1<2){
+                        A[m][0]=A[m][0]*cor[dis[m]];
+                        A[m][1]=A[m][1]*cor[dis[m]];
+                        A[m][2]=A[m][2]*cor[dis[m]];
+                        A[m][3]=A[m][3]*cor[dis[m]];
+                        Yu[m]=Yu[m]*cor[dis[m]];
+                        Yv[m]=Yv[m]*cor[dis[m]];
+                        Yw[m]=Yw[m]*cor[dis[m]];
+                     }
+                  }
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,1);
+                  solve(pCounter,4);
+                  u=X[0];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,2);
+                  solve(pCounter,4);
+                  v=X[0];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,3);
+                  solve(pCounter,4);
+                  w=X[0];
+                  vel=pow(u*u+v*v+w*w,0.5);
+                  if(point[10][i][0]<1){
+                     x=point[10][i][2]-deltaT*u;
+                     y=point[10][i][3]-deltaT*v;
+                     z=point[10][i][4]-deltaT*w;
+                     int nPm=point[9][0][0];
+                     for(int i=1;i<nPm+1;i++){
+                        if(point[9][i][1]<1){
+                           dist=pow( pow(point[9][i][2]-x,2.)
+                                    +pow(point[9][i][3]-y,2.)
+                                    +pow(point[9][i][4]-z,2.),0.5);
+                           if(dist<0.0005){
+                              velNew=dist/deltaT;
+                              gain++;
+                           }
+                        }
+
+                     }
+                  }
+                  if(point[10][i][1]<1){
+                     x=point[10][i][2]+deltaT*u;
+                     y=point[10][i][3]+deltaT*v;
+                     z=point[10][i][4]+deltaT*w;
+                     int nPp=point[9][0][0];
+                     for(int i=1;i<nPp+1;i++){
+                        if(point[11][i][0]<1){
+                           dist=pow( pow(point[11][i][2]-x,2.)
+                                    +pow(point[11][i][3]-y,2.)
+                                    +pow(point[11][i][4]-z,2.),0.5);
+                           if(dist<0.0005){
+                              velNew=dist/deltaT;
+                              gain++;
+                           }
+                        }
+                     }
+                  }
+              }
+           }
+        }
+        gain=gain;
+     }
+}
+//---------------------------------------------------------------------------
+void __fastcall TpointList::doLinearInterp(FILE *fpp)
+{
+     int pCounter;
+     double gridSize,radius,centerX,centerY,centerZ,dist;
+     double Liu[4],Liv[4],Liw[4],Liax[4],Liay[4],Liaz[4];
+     double w1,w2,w3,s11,s12,s13,s22,s23,s33,ww1,ww2,ww3,wwsij;
+     double s111,s222,s333,s112,s113,s221,s223,s331,s332,s123;
+     double sijsjkski,wsq,twosijsij,R,Q,div,ref,diss;
+
+     gridSize=1.;//StrToFloat(mainForm->gridSizeEdit->Text);
+     radius=1.;//StrToFloat(mainForm->sphereEdit->Text);
+
+     for(double x=minX;x<maxX+gridSize;x=x+gridSize){
+        for(double y=minY;y<maxY+gridSize;y=y+gridSize){
+           for(double z=minZ;z<maxZ+gridSize;z=z+gridSize){
+               //%Da soll jetzt duidxj linear interpoliert werden
+               //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+               //%die nächsten Punkte zu Punkt xr,yr,zr, finden
+               pCounter=0;
+               count++;
+               setAllMatrixesToZero(4);
+               centerX=0.;
+               centerY=0.;
+               centerZ=0.;
+               for(int i=0;i<arraySize;i++){
+                  dis[i]=0.;
+               }
+               
+               for(int i=1;i<point[0][0][0]+1;i++){
+                  if(point[0][i][11]>0.){
+                     dist=pow(pow(point[0][i][2]-x,2.)+pow(point[0][i][3]-y,2.)+pow(point[0][i][4]-z,2.),0.5);
+                     if(dist<radius && pCounter<arraySize){
+                        dis[pCounter]=(int)(dist*1000.+0.5);
+                        centerX=centerX+point[0][i][2];
+                        centerY=centerY+point[0][i][3];
+                        centerZ=centerZ+point[0][i][4];
+                        A[pCounter][0]=1.;
+                        A[pCounter][1]=point[0][i][2];
+                        A[pCounter][2]=point[0][i][3];
+                        A[pCounter][3]=point[0][i][4];
+                        Yu[pCounter]=point[0][i][5];
+                        Yv[pCounter]=point[0][i][6];
+                        Yw[pCounter]=point[0][i][7];
+                        Yax[pCounter]=point[0][i][8];
+                        Yay[pCounter]=point[0][i][9];
+                        Yaz[pCounter]=point[0][i][10];
+                        pCounter++;
+                     }
+                  }
+               }
+               meanPointsInSphere=(meanPointsInSphere*(double)(count-1)+(double)pCounter)/(double)count;
+               if(pCounter>3){ // %jetzt wird endlich Punkt1 interpoliert
+                  centerX=centerX/(double)pCounter;
+                  centerY=centerY/(double)pCounter;
+                  centerZ=centerZ/(double)pCounter;
+                  //%correct x,y,z with center of interpolation!
+                  for(int m=0;m<pCounter;m++){
+                     A[m][1]=A[m][1]-centerX;
+                     A[m][2]=A[m][2]-centerY;
+                     A[m][3]=A[m][3]-centerZ;
+                     if(1<2){
+                         A[m][0]=A[m][0]*cor[dis[m]];
+                         A[m][1]=A[m][1]*cor[dis[m]];
+                         A[m][2]=A[m][2]*cor[dis[m]];
+                         A[m][3]=A[m][3]*cor[dis[m]];
+                         Yu[m]=Yu[m]*cor[dis[m]];
+                         Yv[m]=Yv[m]*cor[dis[m]];
+                         Yw[m]=Yw[m]*cor[dis[m]];
+                         Yax[m]=Yax[m]*cor[dis[m]];
+                         Yay[m]=Yay[m]*cor[dis[m]];
+                         Yaz[m]=Yaz[m]*cor[dis[m]];
+                     }
+                  }
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,1);
+                  solve(pCounter,4);
+                  Liu[0]=X[0];
+                  Liu[1]=X[1];
+                  Liu[2]=X[2];
+                  Liu[3]=X[3];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,2);
+                  solve(pCounter,4);
+                  Liv[0]=X[0];
+                  Liv[1]=X[1];
+                  Liv[2]=X[2];
+                  Liv[3]=X[3];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,3);
+                  solve(pCounter,4);
+                  Liw[0]=X[0];
+                  Liw[1]=X[1];
+                  Liw[2]=X[2];
+                  Liw[3]=X[3];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,4);
+                  solve(pCounter,4);
+                  Liax[0]=X[0];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,5);
+                  solve(pCounter,4);
+                  Liay[0]=X[0];
+                  makeAT(pCounter,4);
+                  makeATA(pCounter,4);
+                  makeATY(pCounter,4,6);
+                  solve(pCounter,4);
+                  Liaz[0]=X[0];
+
+                  //%omega,strain,div,ref
+                  w1=Liw[2]-Liv[3];
+                  w2=Liu[3]-Liw[1];
+                  w3=Liv[1]-Liu[2];
+                  s11=Liu[1];
+                  s22=Liv[2];
+                  s33=Liw[3];
+                  s12=0.5*(Liu[2]+Liv[1]);
+                  s13=0.5*(Liu[3]+Liw[1]);
+                  s23=0.5*(Liv[3]+Liw[2]);
+                  div=fabs(s11+s22+s33);
+                  ref=fabs(s11)+fabs(s22)+fabs(s33);
+
+                  ww1=w1*s11+w2*s12+w3*s13;
+                  ww2=w1*s12+w2*s22+w3*s23;
+                  ww3=w1*s13+w2*s23+w3*s33;
+                  wwsij=w1*ww1+w2*ww2+w3*ww3;
+
+                  s111=s11*s11*s11;
+                  s222=s22*s22*s22;
+                  s333=s33*s33*s33;
+                  s112=s11*s12*s12;
+                  s113=s11*s13*s13;
+                  s221=s22*s12*s12;
+                  s223=s22*s23*s23;
+                  s331=s33*s13*s13;
+                  s332=s33*s23*s23;
+                  s123=s12*s23*s13;
+                  sijsjkski=s111+s222+s333+3.*(s112+s113+s221+s223+s331+s332)+6.*s123;
+
+                  wsq=w1*w1+w2*w2+w3*w3;
+                  twosijsij=2.*(s11*s11+s22*s22+s33*s33+2.*(s12*s12+s13*s13+s23*s23));
+                  diss=StrToFloat(mainForm->viscEdit->Text)*twosijsij;
+
+                  Q=(1./4.)*(wsq-twosijsij);
+                  R=-(1./3.)*(sijsjkski+(3./4.)*wwsij);
+
+                  if(div/ref<0.1){
+                      count2++;
+                      meanDiss=(meanDiss*(double)(count2-1)+(double)diss)/(double)count2;
+                      fprintf(fpp, "%lf\t", x);
+                      fprintf(fpp, "%lf\t", y);
+                      fprintf(fpp, "%lf\t", z);
+                      fprintf(fpp, "%lf\t", Liu[0]);
+                      fprintf(fpp, "%lf\t", Liv[0]);
+                      fprintf(fpp, "%lf\t", Liw[0]);
+                      fprintf(fpp, "%lf\t", Liax[0]);
+                      fprintf(fpp, "%lf\t", Liay[0]);
+                      fprintf(fpp, "%lf\t", Liaz[0]);
+                      fprintf(fpp, "%lf\t", w1);
+                      fprintf(fpp, "%lf\t", w2);
+                      fprintf(fpp, "%lf\t", w3);
+                      fprintf(fpp, "%lf\t", s11);
+                      fprintf(fpp, "%lf\t", s12);
+                      fprintf(fpp, "%lf\t", s13);
+                      fprintf(fpp, "%lf\t", s22);
+                      fprintf(fpp, "%lf\t", s23);
+                      fprintf(fpp, "%lf\t", s33);
+                      fprintf(fpp, "%lf\t", ww1);
+                      fprintf(fpp, "%lf\t", ww2);
+                      fprintf(fpp, "%lf\t", ww3);
+                      fprintf(fpp, "%lf\t", wwsij);
+                      fprintf(fpp, "%lf\t", sijsjkski);
+                      fprintf(fpp, "%lf\t", R);
+                      fprintf(fpp, "%lf\t", Q);
+                      fprintf(fpp, "%lf\n", diss);
+                  }
+               }
+           }
+        }
+     }
+}
+//---------------------------------------------------------------------------
 void __fastcall TpointList::setAllMatrixesToZero(int size)
 {
 
     for(int i=0;i<arraySize;i++){
        if(i<size){
           X[i]=0.;
-          //m0TY[i]=0.;
+          m0TY[i]=0.;
           ATY[i]=0.;
           BTY[i]=0.;
           CTY[i]=0.;
-          //DTY[i]=0.;
+          DTY[i]=0.;
        }
        Y[i]=0.;
-       /*Yu[i]=0.;
+       Yu[i]=0.;
        Yv[i]=0.;
        Yw[i]=0.;
        Yu0[i]=0.;
@@ -3447,9 +5423,9 @@ void __fastcall TpointList::setAllMatrixesToZero(int size)
        Yw0[i]=0.;
        YuA[i]=0.;
        YvA[i]=0.;
-       YwA[i]=0.; */
+       YwA[i]=0.;
        YuB[i]=0.;
-       /*YvB[i]=0.;
+       YvB[i]=0.;
        YwB[i]=0.;
        YuC[i]=0.;
        YvC[i]=0.;
@@ -3459,35 +5435,54 @@ void __fastcall TpointList::setAllMatrixesToZero(int size)
        YwD[i]=0.;
        Yaz[i]=0.;
        Yay[i]=0.;
-       Yax[i]=0.; */
+       Yax[i]=0.;
        for(int j=0;j<size;j++){
-          /*m0[i][j]=0.;
+          m0[i][j]=0.;
           m0T[j][i]=0.;
-          if(i<size){m0T0[i][j]=0.;} */
+          if(i<size){m0T0[i][j]=0.;}
           A[i][j]=0.;
           AT[j][i]=0.;
           if(i<size){ATA[i][j]=0.;}
           B[i][j]=0.;
           BT[j][i]=0.;
           if(i<size){BTB[i][j]=0.;}
-          /*C[i][j]=0.;
+          C[i][j]=0.;
           CT[j][i]=0.;
           if(i<size){CTC[i][j]=0.;}
           D[i][j]=0.;
           DT[j][i]=0.;
-          if(i<size){DTD[i][j]=0.;} */
+          if(i<size){DTD[i][j]=0.;}
        }
     }
     
 }
 //---------------------------------------------------------------------------
-
+//---------------------------------------------------------------------------
+void __fastcall TpointList::make0T(int n, int m)
+{
+     for(int i=0;i<m;i++){
+        for(int j=0;j<n;j++){
+           m0T[i][j]=m0[j][i];
+        }
+     }
+}
+//---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 void __fastcall TpointList::makeAT(int n, int m)
 {
      for(int i=0;i<m;i++){
         for(int j=0;j<n;j++){
            AT[i][j]=A[j][i];
+        }
+     }
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::makeDT(int n, int m)
+{
+     for(int i=0;i<m;i++){
+        for(int j=0;j<n;j++){
+           DT[i][j]=D[j][i];
         }
      }
 }
@@ -3503,16 +5498,29 @@ void __fastcall TpointList::makeBT(int n, int m)
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::makeCT(int n, int m,int dt)
+void __fastcall TpointList::makeCT(int n, int m)
 {
      for(int i=0;i<m;i++){
         for(int j=0;j<n;j++){
-           CT[i][j]=C[j][i][dt];
+           CT[i][j]=C[j][i];
         }
      }
 }
 //---------------------------------------------------------------------------
 
+//---------------------------------------------------------------------------
+void __fastcall TpointList::make0T0(int n, int m)
+{
+     for(int i=0;i<m;i++){
+        for(int j=0;j<m;j++){
+           m0T0[i][j]=0.;
+           for(int k=0;k<n;k++){
+              m0T0[i][j]=m0T0[i][j]+m0T[i][k]*m0[k][j];
+           }
+        }
+     }
+}
+//---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 void __fastcall TpointList::makeATA(int n, int m)
 {
@@ -3521,6 +5529,19 @@ void __fastcall TpointList::makeATA(int n, int m)
            ATA[i][j]=0.;
            for(int k=0;k<n;k++){
               ATA[i][j]=ATA[i][j]+AT[i][k]*A[k][j];
+           }
+        }
+     }
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::makeDTD(int n, int m)
+{
+     for(int i=0;i<m;i++){
+        for(int j=0;j<m;j++){
+           DTD[i][j]=0.;
+           for(int k=0;k<n;k++){
+              DTD[i][j]=DTD[i][j]+DT[i][k]*D[k][j];
            }
         }
      }
@@ -3540,13 +5561,13 @@ void __fastcall TpointList::makeBTB(int n, int m)
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::makeCTC(int n, int m,int dt)
+void __fastcall TpointList::makeCTC(int n, int m)
 {
      for(int i=0;i<m;i++){
         for(int j=0;j<m;j++){
            CTC[i][j]=0.;
            for(int k=0;k<n;k++){
-              CTC[i][j]=CTC[i][j]+CT[i][k]*C[k][j][dt];
+              CTC[i][j]=CTC[i][j]+CT[i][k]*C[k][j];
            }
         }
      }
@@ -3559,17 +5580,223 @@ void __fastcall TpointList::makeATY(int n, int m,int wh)
      for(int i=0;i<m;i++){
            ATY[i]=0.;
            for(int k=0;k<n;k++){
-               ATY[i]=ATY[i]+AT[i][k]*y[wh][k];
+               switch (wh) {
+                  case 0 :
+                     ATY[i]=ATY[i]+AT[i][k]*Y[k];
+                     break;
+                  case 1 :
+                     ATY[i]=ATY[i]+AT[i][k]*YuA[k];
+                     break;
+                  case 2 :
+                     ATY[i]=ATY[i]+AT[i][k]*YvA[k];
+                     break;
+                  case 3 :
+                     ATY[i]=ATY[i]+AT[i][k]*YwA[k];
+                     break;
+                  case 7 :
+                     ATY[i]=ATY[i]+AT[i][k]*y3[k];
+                     break;
+                  case 8 :
+                     ATY[i]=ATY[i]+AT[i][k]*y4[k];
+                     break;
+                  case 9 :
+                     ATY[i]=ATY[i]+AT[i][k]*y5[k];
+                     break;
+                  case 10 :
+                     ATY[i]=ATY[i]+AT[i][k]*y6[k];
+                     break;
+                  case 11 :
+                     ATY[i]=ATY[i]+AT[i][k]*y7[k];
+                     break;
+                  case 12 :
+                     ATY[i]=ATY[i]+AT[i][k]*y8[k];
+                     break;
+                  case 13 :
+                     ATY[i]=ATY[i]+AT[i][k]*y9[k];
+                     break;
+                  case 14 :
+                     ATY[i]=ATY[i]+AT[i][k]*y10[k];
+                     break;
+                  case 15 :
+                     ATY[i]=ATY[i]+AT[i][k]*y11[k];
+                     break;
+                  case 16 :
+                     ATY[i]=ATY[i]+AT[i][k]*y12[k];
+                     break;
+                  case 17 :
+                     ATY[i]=ATY[i]+AT[i][k]*y13[k];
+                     break;
+                  case 18 :
+                     ATY[i]=ATY[i]+AT[i][k]*y14[k];
+                     break;
+                  case 19 :
+                     ATY[i]=ATY[i]+AT[i][k]*y15[k];
+                     break;
+                  case 20 :
+                     ATY[i]=ATY[i]+AT[i][k]*y16[k];
+                     break;
+                  case 21 :
+                     ATY[i]=ATY[i]+AT[i][k]*y17[k];
+                     break;
+                  case 22 :
+                     ATY[i]=ATY[i]+AT[i][k]*y18[k];
+                     break;
+                  case 23 :
+                     ATY[i]=ATY[i]+AT[i][k]*y19[k];
+                     break;
+                  case 24 :
+                     ATY[i]=ATY[i]+AT[i][k]*y20[k];
+                     break;
+                  case 25 :
+                     ATY[i]=ATY[i]+AT[i][k]*y21[k];
+                     break;
+                  case 26 :
+                     ATY[i]=ATY[i]+AT[i][k]*y22[k];
+                     break;
+                  case 27 :
+                     ATY[i]=ATY[i]+AT[i][k]*y23[k];
+                     break;
+                  case 28 :
+                     ATY[i]=ATY[i]+AT[i][k]*y24[k];
+                     break;
+                  case 29 :
+                     ATY[i]=ATY[i]+AT[i][k]*y25[k];
+                     break;
+                  case 30 :
+                     ATY[i]=ATY[i]+AT[i][k]*y26[k];
+                     break;
+                  case 31 :
+                     ATY[i]=ATY[i]+AT[i][k]*y27[k];
+                     break;
+                  case 32 :
+                     ATY[i]=ATY[i]+AT[i][k]*y28[k];
+                     break;
+                  case 33 :
+                     ATY[i]=ATY[i]+AT[i][k]*y29[k];
+                     break;
+                  case 34 :
+                     ATY[i]=ATY[i]+AT[i][k]*y30[k];
+                     break;
+                  case 35 :
+                     ATY[i]=ATY[i]+AT[i][k]*y31[k];
+                     break;
+                  case 36 :
+                     ATY[i]=ATY[i]+AT[i][k]*y32[k];
+                     break;
+                  case 37 :
+                     ATY[i]=ATY[i]+AT[i][k]*y33[k];
+                     break;
+                  case 38 :
+                     ATY[i]=ATY[i]+AT[i][k]*y34[k];
+                     break;
+                  case 39 :
+                     ATY[i]=ATY[i]+AT[i][k]*y35[k];
+                     break;
+                  case 40 :
+                     ATY[i]=ATY[i]+AT[i][k]*y36[k];
+                     break;
+                  case 41 :
+                     ATY[i]=ATY[i]+AT[i][k]*y37[k];
+                     break;
+                  case 42 :
+                     ATY[i]=ATY[i]+AT[i][k]*y38[k];
+                     break;
+                  case 43 :
+                     ATY[i]=ATY[i]+AT[i][k]*y39[k];
+                     break;
+                  case 44 :
+                     ATY[i]=ATY[i]+AT[i][k]*y40[k];
+                     break;
+                  case 45 :
+                     ATY[i]=ATY[i]+AT[i][k]*y41[k];
+                     break;
+                  
+               }
            }
      }
 }
 //---------------------------------------------------------------------------
-
+//---------------------------------------------------------------------------
+void __fastcall TpointList::make0TY(int n, int m,int wh)
+{
+     for(int i=0;i<m;i++){
+           m0TY[i]=0.;
+           for(int k=0;k<n;k++){
+               switch (wh) {
+                  case 1 :
+                     m0TY[i]=m0TY[i]+m0T[i][k]*Yu0[k];
+                     break;
+                  case 2 :
+                     m0TY[i]=m0TY[i]+m0T[i][k]*Yv0[k];
+                     break;
+                  case 3 :
+                     m0TY[i]=m0TY[i]+m0T[i][k]*Yw0[k];
+                     break;
+               }
+           }
+     }
+}
+//----------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::makeCTY(int n, int m,int wh)
+{
+     for(int i=0;i<m;i++){
+           CTY[i]=0.;
+           for(int k=0;k<n;k++){
+               switch (wh) {
+                  case 1 :
+                     CTY[i]=CTY[i]+CT[i][k]*YuC[k];
+                     break;
+                  case 2 :
+                     CTY[i]=CTY[i]+CT[i][k]*YvC[k];
+                     break;
+                  case 3 :
+                     CTY[i]=CTY[i]+CT[i][k]*YwC[k];
+                     break;
+               }
+           }
+     }
+}
+//----------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::makeDTY(int n, int m,int wh)
+{
+     for(int i=0;i<m;i++){
+           DTY[i]=0.;
+           for(int k=0;k<n;k++){
+               switch (wh) {
+                  case 1 :
+                     DTY[i]=DTY[i]+DT[i][k]*YuD[k];
+                     break;
+                  case 2 :
+                     DTY[i]=DTY[i]+DT[i][k]*YvD[k];
+                     break;
+                  case 3 :
+                     DTY[i]=DTY[i]+DT[i][k]*YwD[k];
+                     break;
+               }
+           }
+     }
+}
+//----------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void __fastcall TpointList::makeCXmY(int n, int m)
+{
+     for(int i=0;i<n;i++){
+           CY[i]=0.;
+           for(int k=0;k<m;k++){
+              CY[i]=CY[i]+C[i][k]*X[k];
+           }
+           Resid[i]=CY[i]-Y[i];
+     }
+}
+//---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
 double __fastcall TpointList::makekResidError(int n)
 {
      double kResid,BY[300],ResidU[300],ResidV[300],ResidW[300];
-     double weightSum;
+     double weightSum,dist;
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3593,7 +5820,7 @@ double __fastcall TpointList::makekResidError(int n)
            for(int k=0;k<4;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
      //B*w-YwB=Dw
      X[0]=w;
@@ -3605,7 +5832,7 @@ double __fastcall TpointList::makekResidError(int n)
            for(int k=0;k<4;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      kResid=0;
@@ -3623,6 +5850,7 @@ double __fastcall TpointList::makekResidErrorQuad(int n)
 {
      double kResid,BY[300],ResidU[300],ResidV[300],ResidW[300];
      double weightSum;
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3658,7 +5886,7 @@ double __fastcall TpointList::makekResidErrorQuad(int n)
            for(int k=0;k<10;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
      //B*w-YwB=Dw
      X[0]=w;
@@ -3676,7 +5904,7 @@ double __fastcall TpointList::makekResidErrorQuad(int n)
            for(int k=0;k<10;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      kResid=0;
@@ -3694,6 +5922,7 @@ double __fastcall TpointList::makekResidErrorCube(int n)
 {
      double kResid,BY[300],ResidU[300],ResidV[300],ResidW[300];
      double weightSum;
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3749,7 +5978,7 @@ double __fastcall TpointList::makekResidErrorCube(int n)
            for(int k=0;k<20;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
      //B*w-YwB=Dw
      X[0]=w;
@@ -3777,7 +6006,7 @@ double __fastcall TpointList::makekResidErrorCube(int n)
            for(int k=0;k<20;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      kResid=0;
@@ -3795,7 +6024,7 @@ double __fastcall TpointList::makeDuError(int n)
 {
      double duError,BY[300],ResidU[300];
      double weightSum,dist;
-
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3834,7 +6063,7 @@ double __fastcall TpointList::makeDuErrorQuad(int n)
 {
      double duError,BY[300],ResidU[300];
      double weightSum,dist;
-
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3879,7 +6108,7 @@ double __fastcall TpointList::makeDuErrorCube(int n)
 {
      double duError,BY[300],ResidU[300];
      double weightSum,dist;
-  
+     int distIndex;
 
      //B*u-YuB=Du
      X[0]=u;
@@ -3934,6 +6163,7 @@ double __fastcall TpointList::makeDvError(int n)
 {
      double dvError,BY[300],ResidV[300];
      double weightSum,dist;
+     int distIndex;
 
 
      //B*v-YvB=Dv
@@ -3946,7 +6176,7 @@ double __fastcall TpointList::makeDvError(int n)
            for(int k=0;k<4;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
 
      //now calc mean Resiudual Energy
@@ -3954,7 +6184,7 @@ double __fastcall TpointList::makeDvError(int n)
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][2]*B[i][2],0.5);
-
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dvError=dvError+pow(ResidV[i]*ResidV[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -3974,7 +6204,7 @@ double __fastcall TpointList::makeDvErrorQuad(int n)
 {
      double dvError,BY[300],ResidV[300];
      double weightSum,dist;
-
+     int distIndex;
 
 
      //B*v-YvB=Dv
@@ -3993,7 +6223,7 @@ double __fastcall TpointList::makeDvErrorQuad(int n)
            for(int k=0;k<10;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
 
      //now calc mean Resiudual Energy
@@ -4001,6 +6231,7 @@ double __fastcall TpointList::makeDvErrorQuad(int n)
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][2]*B[i][2],0.5);
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dvError=dvError+pow(ResidV[i]*ResidV[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -4020,6 +6251,7 @@ double __fastcall TpointList::makeDvErrorCube(int n)
 {
      double dvError,BY[300],ResidV[300];
      double weightSum,dist;
+     int distIndex;
 
 
      //B*v-YvB=Dv
@@ -4049,7 +6281,7 @@ double __fastcall TpointList::makeDvErrorCube(int n)
            for(int k=0;k<20;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidV[i]=BY[i]-YvB[i];
+           ResidV[i]=BY[i]-YvB[i];
      }
 
      //now calc mean Resiudual Energy
@@ -4057,6 +6289,7 @@ double __fastcall TpointList::makeDvErrorCube(int n)
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][2]*B[i][2],0.5);
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dvError=dvError+pow(ResidV[i]*ResidV[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -4075,7 +6308,8 @@ double __fastcall TpointList::makeDvErrorCube(int n)
 double __fastcall TpointList::makeDwError(int n)
 {
      double dwError,BY[300],ResidW[300];
-     double weightSum,dist;    
+     double weightSum,dist;
+     int distIndex;
 
 
      //B*w-YwB=Dw
@@ -4088,13 +6322,14 @@ double __fastcall TpointList::makeDwError(int n)
            for(int k=0;k<4;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      dwError=0;
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][3]*B[i][3],0.5);
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dwError=dwError+pow(ResidW[i]*ResidW[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -4114,6 +6349,7 @@ double __fastcall TpointList::makeDwErrorQuad(int n)
 {
      double dwError,BY[300],ResidW[300];
      double weightSum,dist;
+     int distIndex;
 
 
      //B*w-YwB=Dw
@@ -4132,13 +6368,14 @@ double __fastcall TpointList::makeDwErrorQuad(int n)
            for(int k=0;k<10;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      dwError=0;
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][3]*B[i][3],0.5);
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dwError=dwError+pow(ResidW[i]*ResidW[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -4158,6 +6395,7 @@ double __fastcall TpointList::makeDwErrorCube(int n)
 {
      double dwError,BY[300],ResidW[300];
      double weightSum,dist;
+     int distIndex;
 
 
      //B*w-YwB=Dw
@@ -4187,13 +6425,14 @@ double __fastcall TpointList::makeDwErrorCube(int n)
            for(int k=0;k<20;k++){
               BY[i]=BY[i]+B[i][k]*X[k];
            }
-           //ResidW[i]=BY[i]-YwB[i];
+           ResidW[i]=BY[i]-YwB[i];
      }
      //now calc mean Resiudual Energy
      dwError=0;
      weightSum=0;
      for(int i=0;i<n;i++){
         dist=pow(B[i][3]*B[i][3],0.5);
+        distIndex=(int)(dist*1000+0.5);
         if(dist>0){
            dwError=dwError+pow(ResidW[i]*ResidW[i],0.5)/dist;
            weightSum=weightSum+1;
@@ -4207,7 +6446,8 @@ double __fastcall TpointList::makeDwErrorCube(int n)
      }
      return dwError;
 }
-//--------------------------------------------------------------------------
+//----------------------------------------------------------------
+//---------------------------------------------------------------------------
 void __fastcall TpointList::makeBTY(int n, int m,int wh)
 {
      for(int i=0;i<m;i++){
@@ -4217,23 +6457,33 @@ void __fastcall TpointList::makeBTY(int n, int m,int wh)
                   case 1 :
                      BTY[i]=BTY[i]+BT[i][k]*YuB[k];
                      break;
-                  
-               }
-           }
-     }
-}
-//---------------------------------------------------------------------------
-//--------------------------------------------------------------------------
-void __fastcall TpointList::makeCTY(int n, int m,int wh,int dt)
-{
-     for(int i=0;i<m;i++){
-           CTY[i]=0.;
-           for(int k=0;k<n;k++){
-               switch (wh) {
-                  case 1 :
-                     CTY[i]=CTY[i]+CT[i][k]*YuC[k][dt];
+                  case 2 :
+                     BTY[i]=BTY[i]+BT[i][k]*YvB[k];
                      break;
-                  
+                  case 3 :
+                     BTY[i]=BTY[i]+BT[i][k]*YwB[k];
+                     break;
+                  case 4 :
+                     BTY[i]=BTY[i]+BT[i][k]*y0[k];
+                     break;
+                  case 5 :
+                     BTY[i]=BTY[i]+BT[i][k]*y1[k];
+                     break;
+                  case 6 :
+                     BTY[i]=BTY[i]+BT[i][k]*y2[k];
+                     break;
+                  case 7 :
+                     BTY[i]=BTY[i]+BT[i][k]*y3[k];
+                     break;
+                  case 8 :
+                     BTY[i]=BTY[i]+BT[i][k]*y4[k];
+                     break;
+                  case 9 :
+                     BTY[i]=BTY[i]+BT[i][k]*y5[k];
+                     break;
+                  case 10 :
+                     BTY[i]=BTY[i]+BT[i][k]*y6[k];
+                     break;
                }
            }
      }
@@ -4267,20 +6517,13 @@ bool __fastcall TpointList::solve(int n, int m)
           ok=false;
        }
     }
-    return ok;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::solveB(int n, int m)
+bool __fastcall TpointList::solveB(int n, int m)
 {
     double faktor;
     bool ok=true;
-    //double Resid[300];
-    //double rmsY, rmsR,ratio;
-
-    //bool iterateSolve=false;
-    // if(mainForm->iterateCheckBox->Checked){
-    //    iterateSolve=true;}
 
     for(int i=1;i<m;i++){
        for(int j=i;j<m;j++){
@@ -4304,41 +6547,99 @@ void __fastcall TpointList::solveB(int n, int m)
           ok=false;
        }
     }
-
-    /*rmsY=0.; rmsR=0.;
-    for(int i=0;i<n;i++){
-        Resid[i]=0.;
-        for(int j=0;j<m;j++){
-           Resid[i] = Resid[i] + B[i][j]*X[j];
-        }
-        Resid[i] = fabs(Resid[i]-YuB[i]);
-        rmsY=rmsY+YuB[i]*YuB[i];
-        rmsR=rmsR+Resid[i]*Resid[i];
-    }
-    rmsY=pow(rmsY/(double)n,0.5);
-    rmsR=pow(rmsR/(double)n,0.5);
-    if(rmsY>0){
-       ratio=rmsR/rmsY;
-    }
-    else{
-    ratio=1.;}
-
-    return ratio; */
-
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::solveC(int n, int m)
+bool __fastcall TpointList::solve0(int n, int m)
 {
     double faktor;
     bool ok=true;
+    int indMax;
+    double s[45],q[45],max;
+    double dummy[45],dummyCTY;
 
+    //mit relativer Kolonnenmaximierungsstrategie, Schwarz, p.23
 
-    //bool iterateSolve=false;
-    // if(mainForm->iterateCheckBox->Checked){
-    //    iterateSolve=true;}
 
     for(int i=1;i<m;i++){
+       for(int j=i;j<m;j++){
+          if(fabs(m0T0[j][i-1])>0.){
+             faktor=m0T0[i-1][i-1]/m0T0[j][i-1];
+             for(int k=0;k<m;k++){
+                m0T0[j][k]=m0T0[i-1][k]-faktor*m0T0[j][k];
+             }
+             m0TY[j]=m0TY[i-1]-faktor*m0TY[j];
+          }
+       }
+    }
+    for(int i=m-1;i>-1;i--){
+       for(int j=i+1;j<m;j++){
+          m0TY[i]=m0TY[i]-m0T0[i][j]*X[j];
+       }
+       if(fabs(m0T0[i][i])>0.){
+          X[i]=m0TY[i]/m0T0[i][i];
+       }
+       else{
+           ok=false;
+       }
+
+    }
+    return ok;
+}
+//------------------------------------------------------------------
+//---------------------------------------------------------------------------
+bool __fastcall TpointList::solveC(int n, int m)
+{
+    double faktor;
+    bool ok=true;
+    //int indMax;
+    //double s[45],q[45],max;
+    //double dummy[45],dummyCTY;
+
+    //mit relativer Kolonnenmaximierungsstrategie, Schwarz, p.23
+
+
+    for(int i=1;i<m;i++){
+       /*
+       //look which lines are to change
+       for(int j=i-1;j<m;j++){
+           s[j]=1.;
+           for(int k=0;k<m;k++){
+              s[j]=s[j]+fabs(CTC[j][k]);
+           }
+       }
+       for(int j=0;j<m;j++){
+          q[j]=0;
+       }
+       for(int j=i-1;j<m;j++){
+           q[j]=CTC[j][i-1]/s[j];
+       }
+         //find max
+       max=0;
+       indMax=i-1;
+       for(int j=i-1;j<m;j++){
+          if(fabs(q[j])>max){
+             max=fabs(q[j]);
+             indMax=j;
+          }
+       }
+       //change lines
+       if(indMax>i-1){
+           for(int k=0;k<m;k++){
+              dummy[k]=CTC[i-1][k];
+              dummyCTY=CTY[i-1];
+           }
+           for(int k=0;k<m;k++){
+              CTC[i-1][k]=CTC[indMax][k];
+              CTY[i-1]=CTY[indMax];
+           }
+           for(int k=0;k<m;k++){
+              CTC[indMax][k]=dummy[k];
+              CTY[indMax]=dummyCTY;
+           }
+       } 
+       //go
+       */
        for(int j=i;j<m;j++){
           if(fabs(CTC[j][i-1])>0.){
              faktor=CTC[i-1][i-1]/CTC[j][i-1];
@@ -4357,90 +6658,71 @@ void __fastcall TpointList::solveC(int n, int m)
           X[i]=CTY[i]/CTC[i][i];
        }
        else{
-          ok=false;
+           ok=false;
        }
+
     }
-
-
+    return ok;
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-bool __fastcall TpointList::solveA(int n, int m)
+bool __fastcall TpointList::solveD(int n, int m)
 {
     double faktor;
     bool ok=true;
 
-    //bool iterateSolve=false;
-    // if(mainForm->iterateCheckBox->Checked){
-    //    iterateSolve=true;}
+    //mit relativer Kolonnenmaximierungsstrategie, Schwarz, p.23
+
 
     for(int i=1;i<m;i++){
        for(int j=i;j<m;j++){
-          if(fabs(ATA[j][i-1])>0.){
-             faktor=ATA[i-1][i-1]/ATA[j][i-1];
+          if(fabs(DTD[j][i-1])>0.){
+             faktor=DTD[i-1][i-1]/DTD[j][i-1];
              for(int k=0;k<m;k++){
-                ATA[j][k]=ATA[i-1][k]-faktor*ATA[j][k];
+                DTD[j][k]=DTD[i-1][k]-faktor*DTD[j][k];
              }
-             ATY[j]=ATY[i-1]-faktor*ATY[j];
+             DTY[j]=DTY[i-1]-faktor*DTY[j];
           }
        }
     }
     for(int i=m-1;i>-1;i--){
        for(int j=i+1;j<m;j++){
-          ATY[i]=ATY[i]-ATA[i][j]*X[j];
+          DTY[i]=DTY[i]-DTD[i][j]*X[j];
        }
-       if(fabs(ATA[i][i])>0.){
-          X[i]=ATY[i]/ATA[i][i];
+       if(fabs(DTD[i][i])>0.){
+          X[i]=DTY[i]/DTD[i][i];
        }
        else{
-          ok=false;
+           ok=false;
        }
+
     }
     return ok;
-
-    /*if(iterateSolve){
-       // Test C*X - Y = 0 ???
-       mini=100000.;maxi=-1000000.;
-       for(int i=0;i<n;i++){
-           Resid[i]=0.;
-           for(int j=0;j<m;j++){
-               Resid[i] = Resid[i] + B[i][j]*X[j];
-           }
-           Resid[i] = fabs(Resid[i]-YuB[i])*1000.;//in mm
-           if(Resid[i]<mini){mini=Resid[i];}
-           if(Resid[i]>maxi){maxi=Resid[i];}
-       }
-       for(int i=0;i<n;i++){
-           weight[i]=(Resid[i]-mini)/maxi;
-           weight[i]=1.-1./(1.+exp(-20.*(weight[i]-0.75)));
-       }
-    } */
-
 }
-//---------------------------------------------------------------------------
-
-
-
+//------------------------------------------------------------------
 //---------------------------------------------------------------------------
 void __fastcall TpointList::autoCorrelation()
 {
     double dist,co,va,cox,vax,coy,vay,coz,vaz,Aco,Ava,Acox,Avax,Acoy,Avay,Acoz,Avaz;
-    double pPerRa[400],minDist[10];
+    double pPerRa[100],minDist[10];
     int index,rank;
     int in[5];
-    for (int k=0;k<400;k++){
+    for (int k=0;k<100;k++){
        pPerRa[k]=0;
     }
     int stepSize=StrToInt(graphForm->stepEdit->Text);
 
+    double normalizerX;
+    double normalizerY;
+    double normalizerZ;
 
     for(int i=1;i<point[2][0][0];i=i+stepSize){
      if(point[2][i][11]>0.){
-       for (int k=0;k<400;k++){
+       for (int k=0;k<100;k++){
           pPerRa[k]=0;
        }
        for(int j=0;j<10;j++){
-          minDist[j]=40.;
+          minDist[j]=10.;
        }
        //for(int j=i+1;j<point[2][0][0]+1;j++){
        for(int j=1;j<point[2][0][0]+1;j++){
@@ -4513,7 +6795,7 @@ void __fastcall TpointList::autoCorrelation()
              }
              //pointPerRadius stuff
              index=(int)(dist*10000.+0.5);
-             for (int k=0;k<400;k++){
+             for (int k=0;k<100;k++){
                 if(index<k){
                    pPerRa[k]=pPerRa[k]+1;
                 }
@@ -4522,36 +6804,36 @@ void __fastcall TpointList::autoCorrelation()
        }
        //update of minDist;
        for(int j=0;j<10;j++){
-          if(minDist[j]>0 && minDist[j]<0.04){
+          if(minDist[j]>0 && minDist[j]<0.01){
               index=(int)(minDist[j]*10000.+0.5);
-              if(index<400){
+              if(index<100){
                   minDistArray[j][index]=minDistArray[j][index]+1;
               }
           }
        }
 
        for(int j=0;j<5;j++){
-          in[j]=40000;
+          in[j]=10000;
        }
        if(point[2][i][11]>0.){
            in[2]=i;
        }
-       if(in[2]<40000 && point[2][in[2]][1]>0.){
+       if(in[2]<10000 && point[2][in[2]][1]>0.){
            if(point[3][(int)point[2][in[2]][1]][11]>0){
                in[3]=point[2][in[2]][1];
            }
        }
-       if(in[3]<40000 && point[3][in[3]][1]>0.){
+       if(in[3]<10000 && point[3][in[3]][1]>0.){
            if(point[4][(int)point[3][in[3]][1]][11]>0){
                in[4]=point[3][in[3]][1];
            }
        }
-       if(in[2]<40000 && point[2][in[2]][0]>0.){
+       if(in[2]<10000 && point[2][in[2]][0]>0.){
            if(point[1][(int)point[2][in[2]][0]][11]>0){
                in[1]=point[2][in[2]][0];
            }
        }
-       if(in[1]<40000 && point[1][in[1]][0]>0.){
+       if(in[1]<10000 && point[1][in[1]][0]>0.){
            if(point[0][(int)point[1][in[1]][0]][11]>0){
                in[0]=point[1][in[1]][0];
            }
@@ -4559,7 +6841,7 @@ void __fastcall TpointList::autoCorrelation()
 
 
        //pointPerRadius
-       for (int k=0;k<400;k++){
+       for (int k=0;k<100;k++){
            pointPerRadius[k][0]=pointPerRadius[k][0]+1;
            pointPerRadius[k][1]=(pointPerRadius[k][1]*(pointPerRadius[k][0]-1)+pPerRa[k])/pointPerRadius[k][0];
        }
@@ -4571,40 +6853,44 @@ void __fastcall TpointList::autoCorrelation()
     graphForm->Series1->Clear();
     graphForm->Series2->Clear();
     graphForm->Series3->Clear();
-    
+    normalizerX=covx[0][1];
+    normalizerY=covy[0][1];
+    normalizerZ=covz[0][1];
     for(int i=0;i<300;i++){
-       //if(normalizerX>0.){
+       if(normalizerX>0.){
           //cor[i]=cov[i][1]/var[i][1];
-          corx[i]=covx[i][1]/varx[0][1]; ///normalizerX;//
-          cory[i]=covy[i][1]/vary[0][1];
-          corz[i]=covz[i][1]/varz[0][1];
+          corx[i]=covx[i][1]/normalizerX;//varx[i][1];
+          cory[i]=covy[i][1]/normalizerY;//vary[i][1];
+          corz[i]=covz[i][1]/normalizerZ;//varz[i][1];
           graphForm->Series1->AddXY((double)i/10.,corx[i],'.',clTeeColor);
           graphForm->Series2->AddXY((double)i/10.,cory[i],'.',clTeeColor);
           graphForm->Series3->AddXY((double)i/10.,corz[i],'.',clTeeColor);
-       //}
+       }
     }
 
     graphForm->Series5->Clear();
     graphForm->Series6->Clear();
     graphForm->Series7->Clear();
-   
+    normalizerX=Acovx[0][1];
+    normalizerY=Acovy[0][1];
+    normalizerZ=Acovz[0][1];
     for(int i=0;i<300;i++){
-       //if(normalizerX>0.){
+       if(normalizerX>0.){
           //Acor[i]=Acov[i][1]/Avar[i][1];
-          Acorx[i]=Acovx[i][1]/Avarx[0][1]; ///normalizerX;//
-          Acory[i]=Acovy[i][1]/Avary[0][1];
-          Acorz[i]=Acovz[i][1]/Avarz[0][1];
+          Acorx[i]=Acovx[i][1]/normalizerX;//Avarx[i][1];
+          Acory[i]=Acovy[i][1]/normalizerY;//Avary[i][1];
+          Acorz[i]=Acovz[i][1]/normalizerZ;//Avarz[i][1];
           graphForm->Series5->AddXY((double)i/10.,Acorx[i],'.',clTeeColor);
           graphForm->Series6->AddXY((double)i/10.,Acory[i],'.',clTeeColor);
           graphForm->Series7->AddXY((double)i/10.,Acorz[i],'.',clTeeColor);
-       //}
+       }
     }
 
     
    
     //draw points per radius stuff stuff
     graphForm->Series4->Clear();
-    for(int i=0;i<400;i++){
+    for(int i=0;i<100;i++){
        graphForm->Series4->AddXY(((double)i)/10.,pointPerRadius[i][1],'.',clTeeColor);
     }
 
@@ -4618,7 +6904,7 @@ void __fastcall TpointList::autoCorrelation()
     graphForm->Series21->Clear();
     graphForm->Series22->Clear();
     graphForm->Series23->Clear();
-    for(int i=1;i<400;i++){
+    for(int i=1;i<100;i++){
        graphForm->Series14->AddXY((double)i/10.,minDistArray[0][i],'.',clTeeColor);
        graphForm->Series15->AddXY((double)i/10.,minDistArray[1][i],'.',clTeeColor);
        graphForm->Series16->AddXY((double)i/10.,minDistArray[2][i],'.',clTeeColor);
@@ -4804,73 +7090,6 @@ void __fastcall TpointList::getMean()
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::readXUAPFileOld(int n, bool shift)
-{
-    FILE *fpp;
-    int numOfPoints;
-    double left,right,x,y,z,u,v,w,ax,ay,az,dummy,cubic,quality;
-
-    AnsiString name;
-    const char *filename;
-    for(int i=0;i<5;i++){
-       if(n-2+i>firstFile-1 && n-2+i<lastFile+1){
-          if(i<4 && shift){
-             for(int j=0;j<point[i+1][0][0]+1;j++){
-                 for(int k=0;k<12;k++){
-                     point[i][j][k]=point[i+1][j][k];
-                 }
-             }
-          }
-          else{
-             numOfPoints=0;
-             name=baseName+IntToStr(n-2+i);
-             filename=name.c_str();
-             fpp = fopen(filename,"r");
-             while(!feof(fpp)){
-                numOfPoints++;
-                fscanf (fpp, "%lf\0", &left);
-                fscanf (fpp, "%lf\0", &right);
-                fscanf (fpp, "%lf\0", &dummy); //measured x
-                fscanf (fpp, "%lf\0", &dummy); //measured y
-                fscanf (fpp, "%lf\0", &dummy); //measured z
-                fscanf (fpp, "%lf\0", &x); //cubic spline x
-                fscanf (fpp, "%lf\0", &y); //cubic spline y
-                fscanf (fpp, "%lf\0", &z); //cubic spline z
-                fscanf (fpp, "%lf\0", &u);
-                fscanf (fpp, "%lf\0", &v);
-                fscanf (fpp, "%lf\0", &w);
-                fscanf (fpp, "%lf\0", &ax);
-                fscanf (fpp, "%lf\0", &ay);
-                fscanf (fpp, "%lf\0", &az);
-                fscanf (fpp, "%lf\0", &cubic);
-                //fscanf (fpp, "%lf\0", &quality);
-                point[i][numOfPoints][0]=left;
-                point[i][numOfPoints][1]=right;
-                point[i][numOfPoints][2]=x;
-                point[i][numOfPoints][3]=y;
-                point[i][numOfPoints][4]=z;
-                point[i][numOfPoints][5]=u;
-                point[i][numOfPoints][6]=v;
-                point[i][numOfPoints][7]=w;
-                point[i][numOfPoints][8]=ax;
-                point[i][numOfPoints][9]=ay;
-                point[i][numOfPoints][10]=az;
-                point[i][numOfPoints][11]=cubic;
-                //new quality
-                //point[i][numOfPoints][12]=quality;
-             }
-             fclose (fpp);
-             point[i][0][0]=numOfPoints++;
-          }
-
-       }
-       else{
-          point[i][0][0]=0;
-       }
-    }
-}
-//-----------------------------------------------------
-//---------------------------------------------------------------------------
 void __fastcall TpointList::makeCor()
 {
      for(int j=0;j<10;j++){
@@ -4955,8 +7174,6 @@ void __fastcall TpointList::makeStruct()
      int stepSizeFile=StrToInt(structForm->stepFileEdit->Text);
      int stepSize=StrToInt(structForm->stepEdit->Text);
 
-     double meanU=0,meanV=0,meanW=0,meanAx=0,meanAy=0,meanAz=0;
-
      counter=0;
      uaMean=0;
      for(int i=0;i<201;i++){
@@ -4979,14 +7196,6 @@ void __fastcall TpointList::makeStruct()
              ua= point[2][j][5]*point[2][j][8]
                 +point[2][j][6]*point[2][j][9]
                 +point[2][j][7]*point[2][j][10];
-
-             meanU=meanU+point[2][j][5];
-             meanV=meanV+point[2][j][6];
-             meanW=meanW+point[2][j][7];
-             meanAx=meanAx+point[2][j][8];
-             meanAy=meanAy+point[2][j][9];
-             meanAz=meanAz+point[2][j][10];
-
              counter=counter+1;
              for(int k=j+1;k<point[2][0][0];k++){
                 if(point[2][k][11]>0.){
@@ -5030,7 +7239,7 @@ void __fastcall TpointList::makeStruct()
                    }
                 }
              }
-             uaMean=uaMean-ua;
+             uaMean=(uaMean*(counter-1)-ua)/counter;
           }
         }
         //draw structure stuff
@@ -5045,118 +7254,10 @@ void __fastcall TpointList::makeStruct()
            structForm->Series3->AddXY((double)j/10.,1e6*thirdArrayYeung[j],'.',clTeeColor);
            structForm->Series4->AddXY((double)j/10.,1e6*dudaArray[j],'.',clTeeColor);
         }
-        structForm->Series5->AddXY((double)0/10.,1e6*(uaMean/counter),'.',clTeeColor);
-        structForm->Series5->AddXY((double)200/10.,1e6*(uaMean/counter),'.',clTeeColor);
-
-        structForm->uEdit->Text=FloatToStr(meanU/counter);
-        structForm->vEdit->Text=FloatToStr(meanV/counter);
-        structForm->wEdit->Text=FloatToStr(meanW/counter);
-        structForm->axEdit->Text=FloatToStr(meanAx/counter);
-        structForm->AyEdit->Text=FloatToStr(meanAy/counter);
-        structForm->AzEdit->Text=FloatToStr(meanAz/counter);
-
+        structForm->Series5->AddXY((double)0/10.,1e6*uaMean,'.',clTeeColor);
+        structForm->Series5->AddXY((double)200/10.,1e6*uaMean,'.',clTeeColor);
         structForm->Refresh();
      }
-
-    meanU=meanU/counter;
-    meanV=meanV/counter;
-    meanW=meanW/counter;
-    meanAx=meanAx/counter;
-    meanAy=meanAy/counter;
-    meanAz=meanAz/counter;
-
-    counter=0;
-     uaMean=0;
-     for(int i=0;i<201;i++){
-        counterArray[i]=0;
-        secondArray[i]=0;
-        thirdArray[i]=0;
-        thirdArrayYeung[i]=0; //K=0.4 not 0.8
-        dudaArray[i]=0;
-     }
-
-    /*for (int i=firstFile;i<lastFile+1;i=i+stepSizeFile){
-        structForm->fileNumEdit->Text=IntToStr(i);
-        structForm->fileNumEdit->Refresh();
-        readXUAPFile(i,true,true);
-        
-        //update structures, 2nd, 3d, du da
-        for(int j=1;j<point[2][0][0]-1;j=j+stepSize){
-          if(point[2][j][11]>0.){
-             ua= (point[2][j][5]-meanU)*(point[2][j][8]-meanAx)
-                +(point[2][j][6]-meanV)*(point[2][j][9]-meanAy)
-                +(point[2][j][7]-meanW)*(point[2][j][10]-meanAz);
-
-             counter=counter+1;
-             for(int k=j+1;k<point[2][0][0];k++){
-                if(point[2][k][11]>0.){
-                   dist=pow( pow(point[2][k][2]-point[2][j][2],2.)
-                            +pow(point[2][k][3]-point[2][j][3],2.)
-                            +pow(point[2][k][4]-point[2][j][4],2.),0.5);
-                   // 1/10 of mm resolution up to 20mm, say
-                   index=(int)(dist*10000.+0.5);
-                   if(index<201 && dist>0){
-                      //delta u ||
-                         // ||l||
-                      lx=(point[2][k][2]-point[2][j][2])/dist;
-                      ly=(point[2][k][3]-point[2][j][3])/dist;
-                      lz=(point[2][k][4]-point[2][j][4])/dist;
-                      dup= ((point[2][k][5]-meanU)-(point[2][j][5]-meanU))*lx
-                          +((point[2][k][6]-meanV)-(point[2][j][6]-meanV))*ly
-                          +((point[2][k][7]-meanW)-(point[2][j][7]-meanW))*lz;
-                      dup=dup;
-                      //du * da
-                      duda= ((point[2][k][5]-meanU)-(point[2][j][5]-meanU))*((point[2][k][8]-meanAx)-(point[2][j][8]-meanAx))
-                           +((point[2][k][6]-meanV)-(point[2][j][6]-meanV))*((point[2][k][9]-meanAy)-(point[2][j][9]-meanAy))
-                           +((point[2][k][7]-meanW)-(point[2][j][7]-meanW))*((point[2][k][10]-meanAz)-(point[2][j][10]-meanAz));
-                      //update arrays
-                      counterArray[index]=counterArray[index]+1;
-                      secondArray[index]=  (
-                                              secondArray[index]*(counterArray[index]-1)
-                                             +pow( dup*dup/KolConst,1.5 )/(dist)
-                                            )/ counterArray[index];
-                      thirdArray[index] =  (
-                                              thirdArray[index]*(counterArray[index]-1)
-                                             +(-dup*dup*dup*1.25)/dist
-                                            )/ counterArray[index];
-                      thirdArrayYeung[index] =  (
-                                              thirdArrayYeung[index]*(counterArray[index]-1)
-                                             +(-dup*dup*dup*2.5)/dist
-                                            )/ counterArray[index];
-                      dudaArray[index]  =  (
-                                              dudaArray[index]*(counterArray[index]-1)
-                                             -0.5*duda
-                                            )/ counterArray[index];
-                   }
-                }
-             }
-             uaMean=uaMean-ua;
-          }
-        }
-        //draw structure stuff
-        structForm->Series1->Clear(); //second
-        structForm->Series2->Clear(); //third
-        structForm->Series3->Clear(); //third, Yeung
-        structForm->Series4->Clear(); //du * da
-        structForm->Series5->Clear(); //u*a
-        for(int j=0;j<200;j++){
-           structForm->Series1->AddXY((double)j/10.,1e6*secondArray[j],'.',clTeeColor);
-           structForm->Series2->AddXY((double)j/10.,1e6*thirdArray[j],'.',clTeeColor);
-           structForm->Series3->AddXY((double)j/10.,1e6*thirdArrayYeung[j],'.',clTeeColor);
-           structForm->Series4->AddXY((double)j/10.,1e6*dudaArray[j],'.',clTeeColor);
-        }
-        structForm->Series5->AddXY((double)0/10.,1e6*(uaMean/counter),'.',clTeeColor);
-        structForm->Series5->AddXY((double)200/10.,1e6*(uaMean/counter),'.',clTeeColor);
-
-        structForm->uEdit->Text=FloatToStr(meanU);
-        structForm->vEdit->Text=FloatToStr(meanV);
-        structForm->wEdit->Text=FloatToStr(meanW);
-        structForm->axEdit->Text=FloatToStr(meanAx);
-        structForm->AyEdit->Text=FloatToStr(meanAy);
-        structForm->AzEdit->Text=FloatToStr(meanAz);
-
-        structForm->Refresh();
-     }*/
 
     FILE *fpp;
     AnsiString name;
@@ -5201,14 +7302,14 @@ void __fastcall TpointList::makeStructRepr()
      double aSqu;
      double uKinMax=1e-3;
      double aSquMax=1e-2;
-     //double sumUkin;
-     //double sumaSqu;
+     double sumUkin;
+     double sumaSqu;
      double sumUkinBelow;
      double sumUkinAbove;
      double sumaSquBelow;
      double sumaSquAbove;
 
-     double dx,dy,dz,deltaU,deltaV,deltaW,deltaVel;
+     double dx,dy,dz,deltaU,deltaV,deltaW,deltaVel,deltaVelTrue;
 
      for(int i=0;i<201;i++){
         counterArray[i]=0;
@@ -5265,18 +7366,18 @@ void __fastcall TpointList::makeStructRepr()
                 if(point[2][j][13]<0.1){
                    uKinBelowArray[index]=uKinBelowArray[index]+1;
                 }
-                //if(1<2){//(point[2][j][13]>0.1){
+                if(1<2){//(point[2][j][13]>0.1){
                    uKinAboveArray[index]=uKinAboveArray[index]+1;
-                //}
+                }
              }
              index=(int)(aSqu*pdfSize/aSquMax+0.5);
              if(index>0 && index<pdfSize){
                 if(point[2][j][13]<0.1){
                    aSqBelowArray[index]=aSqBelowArray[index]+1;
                 }
-                //if(1<2){//(point[2][j][13]>0.1){
+                if(1<2){//(point[2][j][13]>0.1){
                    aSqAboveArray[index]=aSqAboveArray[index]+1;
-                //}
+                }
              }
 
              for(int k=j+1;k<point[2][0][0];k++){
@@ -5321,6 +7422,7 @@ void __fastcall TpointList::makeStructRepr()
                                                            +point[2][j][23]*dy
                                                            +point[2][j][24]*dz);
                       deltaVel=deltaU*deltaU+deltaV*deltaV+deltaW*deltaW;
+                      deltaVelTrue=du*du;
                       //update arrays
                       counterArray[index]=counterArray[index]+1;
                       secondArray[index]=  (
@@ -5369,7 +7471,7 @@ void __fastcall TpointList::makeStructRepr()
 
 
                       }
-                      //if(1<2){//(point[2][j][13]>0.1 && point[2][k][13]>0.1){
+                      if(1<2){//(point[2][j][13]>0.1 && point[2][k][13]>0.1){
                          aboveCounterArray[index]=aboveCounterArray[index]+1;
                          secondParalAboveArray[index]=  (
                                                            secondParalAboveArray[index]*(aboveCounterArray[index]-1)
@@ -5390,7 +7492,7 @@ void __fastcall TpointList::makeStructRepr()
                                                  deltaVelAboveArray[index]*(aboveCounterArray[index]-1)
                                                  +deltaVel
                                                 )/ aboveCounterArray[index];
-                      //}
+                      }
                    }
                 }
              }
@@ -5553,329 +7655,6 @@ void __fastcall TpointList::makeKrigingWeights()
 }
 //-----------------------------------------------------------------
 //---------------------------------------------------------------------------
-void __fastcall TpointList::readWriteRisoETH()
-{
-    const char *filename1;
-    filename1=baseName1.c_str();
-    const char *filename2;
-    filename2=baseName2.c_str();
-    AnsiString name;
-    //AnsiString name_rt;
-    AnsiString name_ptv;
-    const char *filenamePTV;
-    bool risoFileNotFinished=true;
-    FILE *fPtsInput, *fLinkInput;
-    int nopart,ok;
-    short int left,right;
-    float x,y,z;
-
-    int frame=10000;
-    double risoPoint[2000][5];
-    //FILE *fpp1;
-    FILE *fpp2;
-
-    fPtsInput  = fopen(filename1,"rb");
-    fLinkInput = fopen(filename2,"rb");
-    while (risoFileNotFinished){
-       ok=fread(&nopart,4,1,fPtsInput);
-       risoPoint[0][0]=nopart;
-       if(!(ok==1)){
-       risoFileNotFinished=false;}
-       if(risoFileNotFinished){
-          for(int i=1;i<risoPoint[0][0]+1;i++){
-             ok=fread(&x,sizeof(float),1,fPtsInput);
-             ok=fread(&y,sizeof(float),1,fPtsInput);
-             ok=fread(&z,sizeof(float),1,fPtsInput);
-             //ok=fread(&link,2,1,fPtsInput);
-             //ok=fread(&link,2,1,fPtsInput);
-             //ok=fread(&link,2,1,fPtsInput);
-             //ok=fread(&link,2,1,fPtsInput);
-             risoPoint[i][2]=(double)x;
-             risoPoint[i][3]=(double)y;
-             risoPoint[i][4]=(double)z;
-          }
-          ok=fread(&nopart,sizeof(int),1,fLinkInput);
-          for(int i=1;i<risoPoint[0][0]+1;i++){
-             ok=fread(&left,sizeof(short int),1,fLinkInput);
-             if((double)left>-1){
-                risoPoint[i][0]=(double)left;
-             }
-             else{
-                risoPoint[i][0]=-1;
-             }
-
-          }
-          for(int i=1;i<risoPoint[0][0]+1;i++){
-             ok=fread(&right,sizeof(short int),1,fLinkInput);
-             if((double)right>-1){
-                risoPoint[i][1]=(double)right;
-             }
-             else{
-                risoPoint[i][1]=-1;
-             }
-          }
-          mainForm->fileNumEdit->Text=IntToStr(frame-1);
-          name_ptv = "ptv_is."+IntToStr(frame);
-          filenamePTV=name_ptv.c_str();
-          fpp2 = fopen(filenamePTV,"w");
-          fprintf(fpp2, "%d\n", (int)risoPoint[0][0]);
-          for(int i=1;i<risoPoint[0][0]+1;i++){
-             fprintf(fpp2, "%d\t", (int)risoPoint[i][0]);
-             fprintf(fpp2, "%d\t", (int)risoPoint[i][1]);
-             fprintf(fpp2, "%lf\t", risoPoint[i][2]);
-             fprintf(fpp2, "%lf\t", risoPoint[i][3]);
-             fprintf(fpp2, "%lf\n", risoPoint[i][4]);
-          }
-          fclose (fpp2);
-          frame++;
-          mainForm->Refresh();
-       }
-
-       /*mainForm->fileNumEdit->Text=IntToStr(frame-1);
-       //name_rt  = "rt_is."+IntToStr(frame);
-       name_ptv = "ptv_is."+IntToStr(frame);
-       const char *filenameRT;
-       const char *filenamePTV;
-       //filenameRT=name_rt.c_str();
-       filenamePTV=name_ptv.c_str();
-       //fpp1 = fopen(filenameRT,"w");
-       fpp2 = fopen(filenamePTV,"w");
-       //fprintf(fpp1, "%d\n", (int)risoPoint[0][0]);
-       fprintf(fpp2, "%d\n", (int)risoPoint[0][0]);
-       for(int i=1;i<risoPoint[0][0]+1;i++){
-          //fprintf(fpp1, "%d\t", i);
-          //fprintf(fpp1, "%lf\t", risoPoint[i][2]);
-          //fprintf(fpp1, "%lf\t", risoPoint[i][3]);
-          //fprintf(fpp1, "%lf\t", risoPoint[i][4]);
-          //fprintf(fpp1, "%d\t", 500);
-          //fprintf(fpp1, "%d\t", 500);
-          //fprintf(fpp1, "%d\t", 500);
-          //fprintf(fpp1, "%d\n", 500);
-
-          fprintf(fpp2, "%d\t", (int)risoPoint[i][0]);
-          fprintf(fpp2, "%d\t", (int)risoPoint[i][1]);
-          fprintf(fpp2, "%lf\t", risoPoint[i][2]);
-          fprintf(fpp2, "%lf\t", risoPoint[i][3]);
-          fprintf(fpp2, "%lf\n", risoPoint[i][4]);
-       }
-       //fclose (fpp1);
-       fclose (fpp2);
-
-       frame++;
-       mainForm->Refresh();*/
-   }
-   fclose(fPtsInput);
-   fclose(fLinkInput);
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-void __fastcall TpointList::readWriteETHRiso()
-{
-
-    const char *filenamePTV;
-    filenamePTV=baseNameTwo.c_str();
-
-    FILE *fPtsOutput, *fLinkOutput;
-    int nopart,left,right;
-
-    double risoPoint[2000][5],dummy;
-    float risoPointFloat[2000][5];
-    //FILE *fpp1;
-    FILE *fpp2;
-
-    AnsiString name1;
-    AnsiString name2;
-    const char *filename1;
-    const char *filename2;
-    //AnsiString name_rt;
-    AnsiString name_ptv;
-
-    name1="rec//////.pt3";
-    name2="rec/////.pln";
-
-    filename1=name1.c_str();
-    filename2=name2.c_str();
-
-    fPtsOutput  = fopen(filename1,"wb");
-    fLinkOutput = fopen(filename2,"wb");
-    for(int frame=firstFile;frame<lastFile+1;frame++){
-
-       mainForm->fileNumEdit->Text=IntToStr(frame);
-       //name_rt  = baseName+IntToStr(frame);
-       name_ptv = baseNameTwo+IntToStr(frame);
-       //filenameRT=name_rt.c_str();
-       filenamePTV=name_ptv.c_str();
-       //fpp1 = fopen(filenameRT,"r");
-       fpp2 = fopen(filenamePTV,"r");
-       //fscanf(fpp1, "%d\n", &nopart);
-       fscanf(fpp2, "%d\n", &nopart);
-       for(int i=1;i<nopart+1;i++){
-          /*fscanf(fpp1, "%d\t", &dummy);
-          fscanf(fpp1, "%lf\t", &risoPoint[i][2]);
-          fscanf(fpp1, "%lf\t", &risoPoint[i][3]);
-          fscanf(fpp1, "%lf\t", &risoPoint[i][4]);
-          fscanf(fpp1, "%d\t", &dummy);
-          fscanf(fpp1, "%d\t", &dummy);
-          fscanf(fpp1, "%d\t", &dummy);
-          fscanf(fpp1, "%d\n", &dummy); */
-
-          fscanf(fpp2, "%d\t", &left);
-          fscanf(fpp2, "%d\t", &right);
-          fscanf(fpp2, "%lf\t", &risoPoint[i][2]);
-          fscanf(fpp2, "%lf\t", &risoPoint[i][3]);
-          fscanf(fpp2, "%lf\n", &risoPoint[i][4]);
-          fscanf(fpp2, "%lf\n", &dummy);
-
-          risoPoint[i][0]=(double)left;
-          risoPoint[i][1]=(double)right;
-          risoPointFloat[i][2]=(float)risoPoint[i][2];
-          risoPointFloat[i][3]=(float)risoPoint[i][3];
-          risoPointFloat[i][4]=(float)risoPoint[i][4];
-       }
-       //fclose (fpp1);
-       fclose (fpp2);
-
-
-       fwrite(&nopart,sizeof(int),1,fPtsOutput);
-
-          for(int i=1;i<nopart+1;i++){
-             fwrite(&risoPointFloat[i][2],sizeof(float),1,fPtsOutput);
-             fwrite(&risoPointFloat[i][3],sizeof(float),1,fPtsOutput);
-             fwrite(&risoPointFloat[i][4],sizeof(float),1,fPtsOutput);
-          }
-          fwrite(&nopart,sizeof(int),1,fLinkOutput);
-          for(int i=1;i<nopart+1;i++){
-             left=(int)risoPoint[i][0];
-             fwrite(&left,sizeof(short int),1,fLinkOutput);
-          }
-          for(int i=1;i<nopart+1;i++){
-             right=(int)risoPoint[i][1];
-             fwrite(&right,sizeof(short int),1,fLinkOutput);
-          }
-
-       mainForm->Refresh();
-   }
-   fclose(fPtsOutput);
-   fclose(fLinkOutput);
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-void __fastcall TpointList::writeBinary()
-{
-
-    const char *filenameTrajAcc;
-    filenameTrajAcc=baseName.c_str();
-    FILE *fBinaryData;
-
-    double x,y,z,u,v,w,ax,ay,az,ux,uy,uz,vx,vy,vz,wx,wy,wz,ut,vt,wt,dummy;
-    double dix,diy,diz,refx,refy,refz,qual;
-    FILE *fpp;
-    int howMany=0;
-
-    AnsiString name1;
-    const char *filename1;
-    AnsiString name_traj;
-
-    name1="data.dat";
-    filename1=name1.c_str();
-    fBinaryData  = fopen(filename1,"wb");
-
-
-    for(int frame=firstFile;frame<lastFile+1;frame++){
-
-       mainForm->fileNumEdit->Text=IntToStr(frame);
-
-       name_traj = baseName+IntToStr(frame);
-       filenameTrajAcc=name_traj.c_str();
-       fpp = fopen(filenameTrajAcc,"r");
-       while(!feof(fpp)){
-          fscanf(fpp, "%lf\0", &x);//1
-          fscanf(fpp, "%lf\0", &y);//2
-          fscanf(fpp, "%lf\0", &z);//3
-          fscanf(fpp, "%lf\0", &u);//4
-          fscanf(fpp, "%lf\0", &v);//5
-          fscanf(fpp, "%lf\0", &w);//6
-          fscanf(fpp, "%lf\0", &ax);//7
-          fscanf(fpp, "%lf\0", &ay);//8
-          fscanf(fpp, "%lf\0", &az);//9
-                     
-          fscanf(fpp, "%lf\0", &ux);//10
-          fscanf(fpp, "%lf\0", &uy);//11
-          fscanf(fpp, "%lf\0", &uz);//12
-          fscanf(fpp, "%lf\0", &vx);//13
-          fscanf(fpp, "%lf\0", &vy);//14
-          fscanf(fpp, "%lf\0", &vz);//15
-          fscanf(fpp, "%lf\0", &wx);//16
-          fscanf(fpp, "%lf\0", &wy);//17
-          fscanf(fpp, "%lf\0", &wz);//18
-          fscanf(fpp, "%lf\0", &ut);//19
-          fscanf(fpp, "%lf\0", &vt);//20
-          fscanf(fpp, "%lf\0", &wt);//21
-
-          fscanf(fpp, "%lf\0", &dummy);//22
-          fscanf(fpp, "%lf\0", &dummy);//23
-          fscanf(fpp, "%lf\0", &dummy);//24
-          fscanf(fpp, "%lf\0", &dummy);//25
-          fscanf(fpp, "%lf\0", &dummy);//26
-          fscanf(fpp, "%lf\0", &dummy);//27
-          fscanf(fpp, "%lf\0", &dummy);//28
-          fscanf(fpp, "%lf\0", &dummy);//29
-          fscanf(fpp, "%lf\0", &dummy);//30
-
-          fscanf(fpp, "%lf\0", &dummy);//31
-          fscanf(fpp, "%lf\0", &dummy);//32
-          fscanf(fpp, "%lf\0", &dummy);//33
-
-          fscanf(fpp, "%lf\n", &dummy);//34
-
-          //check for quality
-          dix=ax-ut-u*ux-v*uy-w*uz;
-          diy=ay-vt-u*vx-v*vy-w*vz;
-          diz=az-wt-u*wx-v*wy-w*wz;
-          refx= fabs(ax)+fabs(ut)+fabs(u*ux+v*uy+w*uz);
-          refy= fabs(ay)+fabs(vt)+fabs(u*vx+v*vy+w*vz);
-          refz= fabs(az)+fabs(wt)+fabs(u*wx+v*wy+w*wz);
-          if(refx>0 && refy>0 && refz>0){
-                     qual=(1./3.)*(fabs(dix)/refx+fabs(diy)/refy+fabs(diz)/refz);
-          }
-          else{
-                     qual=0.95;
-          }
-          //end check for quality
-          //if(qual<0.1 && fabs(u)>0 && fabs(v)>0 && fabs(w)>0){
-          if(fabs(u)>0 && fabs(v)>0 && fabs(w)>0){
-               howMany++;
-               fwrite(&u,sizeof(double),1,fBinaryData);
-               fwrite(&v,sizeof(double),1,fBinaryData);
-               fwrite(&w,sizeof(double),1,fBinaryData);
-               fwrite(&ax,sizeof(double),1,fBinaryData);
-               fwrite(&ay,sizeof(double),1,fBinaryData);
-               fwrite(&az,sizeof(double),1,fBinaryData);
-
-               fwrite(&ux,sizeof(double),1,fBinaryData);
-               fwrite(&uy,sizeof(double),1,fBinaryData);
-               fwrite(&uz,sizeof(double),1,fBinaryData);
-               fwrite(&vx,sizeof(double),1,fBinaryData);
-               fwrite(&vy,sizeof(double),1,fBinaryData);
-               fwrite(&vz,sizeof(double),1,fBinaryData);
-               fwrite(&wx,sizeof(double),1,fBinaryData);
-               fwrite(&wy,sizeof(double),1,fBinaryData);
-               fwrite(&wz,sizeof(double),1,fBinaryData);
-
-               fwrite(&ut,sizeof(double),1,fBinaryData);
-               fwrite(&vt,sizeof(double),1,fBinaryData);
-               fwrite(&wt,sizeof(double),1,fBinaryData);
-
-          }
-       }
-       fclose (fpp);
-       mainForm->numEdit->Text=IntToStr(howMany);
-       mainForm->Refresh();
-   }
-   fclose(fBinaryData);
-}
-//---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
 void __fastcall TpointList::writePTVtoFile(int t)
 {
 
@@ -5910,1119 +7689,6 @@ void __fastcall TpointList::writePTVtoFile(int t)
     fclose (fpp);
 }
 //---------------------------------------------------------------------------
-double __fastcall TpointList::Sqrt(double x)
-{
-	return sqrt(x);
-}
- 
-
-double __fastcall TpointList::Power(double x,int n)
-{
-	return pow(x,n);
-/*	switch (n) {
-	case 2:
-		return x*x;
-		break;
-	case 3:
-		return x*x*x;
-		break;
-	default:
-		nrerror("???? Error in Power");
-		break;
-	}*/
-}
-
-double __fastcall TpointList::Rep(int j, int m, int n, int i, double x, double y, double z)
-{
-	double ex;
-	int code;
-        double Pi=3.141592653589793;
-
-	code = i*1000+j*100+m*10+n;
-
-/* Re p */
-switch (code) {
-case 1100 :
-ex = 0;
-break;
-case 2100 :
-ex = 0;
-break;
-case 3100 :
-ex = Sqrt(3/Pi)/2.;
-break;
-case 1101 :
-ex = (Sqrt(21/(2.*Pi))*x*z)/2.;
-break;
-case 2101 :
-ex = (Sqrt(21/(2.*Pi))*y*z)/2.;
-break;
-case 3101 :
-ex = -(Sqrt(21/(2.*Pi))*(-1 + 2*Power(x,2) + 2*Power(y,2) + Power(z,2)))/2.;
-break;
-case 1110 :
-ex = -Sqrt(3/(2.*Pi))/2.;
-break;
-case 2110 :
-ex = 0;
-break;
-case 3110 :
-ex = 0;
-break;
-case 1111 :
-ex = (Sqrt(21/Pi)*(-1 + Power(x,2) + 2*Power(y,2) + 2*Power(z,2)))/4.;
-break;
-case 2111 :
-ex = -(Sqrt(21/Pi)*x*y)/4.;
-break;
-case 3111 :
-ex = -(Sqrt(21/Pi)*x*z)/4.;
-break;
-case 1200 :
-ex = -(Sqrt(5/(2.*Pi))*x)/2.;
-break;
-case 2200 :
-ex = -(Sqrt(5/(2.*Pi))*y)/2.;
-break;
-case 3200 :
-ex = Sqrt(5/(2.*Pi))*z;
-break;
-case 1201 :
-ex = (3*Sqrt(15/(2.*Pi))*x*(-1 + Power(x,2) + Power(y,2) + \
-3*Power(z,2)))/4.;
-break;
-case 2201 :
-ex = (3*Sqrt(15/(2.*Pi))*y*(-1 + Power(x,2) + Power(y,2) + \
-3*Power(z,2)))/4.;
-break;
-case 3201 :
-ex = (-3*Sqrt(15/(2.*Pi))*z*(-1 + 2*Power(x,2) + 2*Power(y,2) + \
-Power(z,2)))/2.;
-break;
-case 1210 :
-ex = -(Sqrt(15/Pi)*z)/4.;
-break;
-case 2210 :
-ex = 0;
-break;
-case 3210 :
-ex = -(Sqrt(15/Pi)*x)/4.;
-break;
-case 1211 :
-ex = (3*Sqrt(5/Pi)*z*(-3 + Power(x,2) + 5*Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 2211 :
-ex = (-3*Sqrt(5/Pi)*x*y*z)/2.;
-break;
-case 3211 :
-ex = (3*Sqrt(5/Pi)*x*(-3 + 5*Power(x,2) + 5*Power(y,2) + Power(z,2)))/8.;
-break;
-case 1220 :
-ex = (Sqrt(15/Pi)*x)/4.;
-break;
-case 2220 :
-ex = -(Sqrt(15/Pi)*y)/4.;
-break;
-case 3220 :
-ex = 0;
-break;
-case 1221 :
-ex = (-3*Sqrt(5/Pi)*x*(-3 + 3*Power(x,2) + 7*Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 2221 :
-ex = (3*Sqrt(5/Pi)*y*(-3 + 7*Power(x,2) + 3*Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 3221 :
-ex = (3*Sqrt(5/Pi)*(Power(x,2) - Power(y,2))*z)/4.;
-break;
-case 1300 :
-ex = -(Sqrt(21/Pi)*x*z)/2.;
-break;
-case 2300 :
-ex = -(Sqrt(21/Pi)*y*z)/2.;
-break;
-case 3300 :
-ex = -(Sqrt(21/Pi)*(Power(x,2) + Power(y,2) - 2*Power(z,2)))/4.;
-break;
-case 1301 :
-ex = (Sqrt(231/Pi)*x*z*(-4 + 3*Power(x,2) + 3*Power(y,2) + \
-8*Power(z,2)))/8.;
-break;
-case 2301 :
-ex = (Sqrt(231/Pi)*y*z*(-4 + 3*Power(x,2) + 3*Power(y,2) + \
-8*Power(z,2)))/8.;
-break;
-case 3301 :
-ex = (Sqrt(231/Pi)*(3*Power(x,4) + 3*Power(y,4) + Power(x,2)*(-2 + \
-6*Power(y,2) - 6*Power(z,2)) - 4*Power(z,2)*(-1 + Power(z,2)) - \
-2*Power(y,2)*(1 + 3*Power(z,2))))/8.;
-break;
-case 1310 :
-ex = (Sqrt(7/Pi)*(3*Power(x,2) + Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 2310 :
-ex = (Sqrt(7/Pi)*x*y)/4.;
-break;
-case 3310 :
-ex = -(Sqrt(7/Pi)*x*z);
-break;
-case 1311 :
-ex = -(Sqrt(77/Pi)*(6*Power(x,4) + 3*Power(y,4) + 8*Power(z,2) - \
-12*Power(z,4) - Power(y,2)*(2 + 9*Power(z,2)) + Power(x,2)*(-6 + \
-9*Power(y,2) + 9*Power(z,2))))/16.;
-break;
-case 2311 :
-ex = -(Sqrt(77/Pi)*x*y*(-4 + 3*Power(x,2) + 3*Power(y,2) + \
-18*Power(z,2)))/16.;
-break;
-case 3311 :
-ex = (Sqrt(77/Pi)*x*z*(-16 + 27*Power(x,2) + 27*Power(y,2) + \
-12*Power(z,2)))/16.;
-break;
-case 1320 :
-ex = (Sqrt(35/(2.*Pi))*x*z)/2.;
-break;
-case 2320 :
-ex = -(Sqrt(35/(2.*Pi))*y*z)/2.;
-break;
-case 3320 :
-ex = (Sqrt(35/(2.*Pi))*(Power(x,2) - Power(y,2)))/4.;
-break;
-case 1321 :
-ex = -(Sqrt(385/(2.*Pi))*x*z*(-4 + 3*Power(x,2) + 9*Power(y,2) + \
-6*Power(z,2)))/8.;
-break;
-case 2321 :
-ex = (Sqrt(385/(2.*Pi))*y*z*(-4 + 9*Power(x,2) + 3*Power(y,2) + \
-6*Power(z,2)))/8.;
-break;
-case 3321 :
-ex = (Sqrt(385/(2.*Pi))*(2*Power(x,2) - 3*Power(x,4) - 2*Power(y,2) + \
-3*Power(y,4)))/8.;
-break;
-case 1330 :
-ex = (Sqrt(105/Pi)*(-Power(x,2) + Power(y,2)))/8.;
-break;
-case 2330 :
-ex = (Sqrt(105/Pi)*x*y)/4.;
-break;
-case 3330 :
-ex = 0;
-break;
-case 1331 :
-ex = (Sqrt(1155/Pi)*(2*Power(x,4) + Power(y,2)*(2 - 3*Power(y,2) - \
-3*Power(z,2)) + Power(x,2)*(-2 + 3*Power(y,2) + 3*Power(z,2))))/16.;
-break;
-case 2331 :
-ex = -(Sqrt(1155/Pi)*x*y*(-4 + 7*Power(x,2) + 3*Power(y,2) + \
-6*Power(z,2)))/16.;
-break;
-case 3331 :
-ex = -(Sqrt(1155/Pi)*x*(Power(x,2) - 3*Power(y,2))*z)/16.;
-break;
-case 1400 :
-ex = (9*x*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/(8.*Sqrt(Pi));
-break;
-case 2400 :
-ex = (9*y*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/(8.*Sqrt(Pi));
-break;
-case 3400 :
-ex = (3*z*(-3*Power(x,2) - 3*Power(y,2) + 2*Power(z,2)))/(2.*Sqrt(Pi));
-break;
-case 1401 :
-ex = (-3*Sqrt(65/Pi)*x*(3*Power(x,4) + 3*Power(y,4) + 4*Power(z,2)*(3 - \
-5*Power(z,2)) - 3*Power(y,2)*(1 + Power(z,2)) + Power(x,2)*(6*Power(y,2) - \
-3*(1 + Power(z,2)))))/16.;
-break;
-case 2401 :
-ex = (-3*Sqrt(65/Pi)*y*(3*Power(x,4) + 3*Power(y,4) + 4*Power(z,2)*(3 - \
-5*Power(z,2)) - 3*Power(y,2)*(1 + Power(z,2)) + Power(x,2)*(6*Power(y,2) - \
-3*(1 + Power(z,2)))))/16.;
-break;
-case 3401 :
-ex = (-3*Sqrt(65/Pi)*z*(-9*Power(x,4) - 9*Power(y,4) + 4*Power(z,2)*(-1 + \
-Power(z,2)) + 2*Power(y,2)*(3 + Power(z,2)) + 2*Power(x,2)*(3 - 9*Power(y,2) \
-+ Power(z,2))))/8.;
-break;
-case 1410 :
-ex = (3*Sqrt(5/Pi)*z*(9*Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 2410 :
-ex = (9*Sqrt(5/Pi)*x*y*z)/8.;
-break;
-case 3410 :
-ex = (9*Sqrt(5/Pi)*x*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1411 :
-ex = (-3*Sqrt(13/Pi)*z*(39*Power(x,4) + 21*Power(y,4) + 4*Power(z,2)*(5 - \
-7*Power(z,2)) - Power(y,2)*(15 + 7*Power(z,2)) + Power(x,2)*(-45 + \
-60*Power(y,2) + 67*Power(z,2))))/32.;
-break;
-case 2411 :
-ex = (-3*Sqrt(13/Pi)*x*y*z*(-15 + 9*Power(x,2) + 9*Power(y,2) + \
-37*Power(z,2)))/16.;
-break;
-case 3411 :
-ex = (-3*Sqrt(13/Pi)*x*(21*Power(x,4) + 21*Power(y,4) + 60*Power(z,2) - \
-52*Power(z,4) + 3*Power(x,2)*(-5 + 14*Power(y,2) - 29*Power(z,2)) - \
-3*Power(y,2)*(5 + 29*Power(z,2))))/32.;
-break;
-case 1420 :
-ex = (-3*Sqrt(5/(2.*Pi))*x*(Power(x,2) - 3*Power(z,2)))/4.;
-break;
-case 2420 :
-ex = (3*Sqrt(5/(2.*Pi))*y*(Power(y,2) - 3*Power(z,2)))/4.;
-break;
-case 3420 :
-ex = (9*Sqrt(5/(2.*Pi))*(Power(x,2) - Power(y,2))*z)/4.;
-break;
-case 1421 :
-ex = (3*Sqrt(13/(2.*Pi))*x*(5*Power(x,4) + 2*Power(y,4) - \
-33*Power(y,2)*Power(z,2) + 3*Power(z,2)*(5 - 7*Power(z,2)) + Power(x,2)*(-5 \
-+ 7*Power(y,2) - 2*Power(z,2))))/8.;
-break;
-case 2421 :
-ex = (-3*Sqrt(13/(2.*Pi))*y*(2*Power(x,4) + 5*Power(y,4) + \
-Power(x,2)*(7*Power(y,2) - 33*Power(z,2)) + 3*Power(z,2)*(5 - 7*Power(z,2)) \
-- Power(y,2)*(5 + 2*Power(z,2))))/8.;
-break;
-case 3421 :
-ex = (-3*Sqrt(13/(2.*Pi))*(Power(x,2) - Power(y,2))*z*(-15 + 23*Power(x,2) + \
-23*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 1430 :
-ex = (-9*Sqrt(35/Pi)*(Power(x,2) - Power(y,2))*z)/16.;
-break;
-case 2430 :
-ex = (9*Sqrt(35/Pi)*x*y*z)/8.;
-break;
-case 3430 :
-ex = (-3*Sqrt(35/Pi)*x*(Power(x,2) - 3*Power(y,2)))/16.;
-break;
-case 1431 :
-ex = (3*Sqrt(91/Pi)*z*(13*Power(x,4) - 3*Power(y,2)*(-5 + 7*Power(y,2) + \
-7*Power(z,2)) + 3*Power(x,2)*(-5 + 8*Power(y,2) + 7*Power(z,2))))/32.;
-break;
-case 2431 :
-ex = (-3*Sqrt(91/Pi)*x*y*z*(-15 + 25*Power(x,2) + 9*Power(y,2) + \
-21*Power(z,2)))/16.;
-break;
-case 3431 :
-ex = (3*Sqrt(91/Pi)*x*(Power(x,2) - 3*Power(y,2))*(-5 + 7*Power(x,2) + \
-7*Power(y,2) - Power(z,2)))/32.;
-break;
-case 1440 :
-ex = (3*Sqrt(35/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2)))/8.;
-break;
-case 2440 :
-ex = (3*Sqrt(35/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2)))/8.;
-break;
-case 3440 :
-ex = 0;
-break;
-case 1441 :
-ex = (-3*Sqrt(91/(2.*Pi))*x*(5*Power(x,4) + Power(y,2)*(15 - 23*Power(y,2) - \
-21*Power(z,2)) + Power(x,2)*(-5 - 2*Power(y,2) + 7*Power(z,2))))/16.;
-break;
-case 2441 :
-ex = (3*Sqrt(91/(2.*Pi))*y*(23*Power(x,4) + Power(y,2)*(5 - 5*Power(y,2) - \
-7*Power(z,2)) + Power(x,2)*(-15 + 2*Power(y,2) + 21*Power(z,2))))/16.;
-break;
-case 3441 :
-ex = (3*Sqrt(91/(2.*Pi))*(Power(x,4) - 6*Power(x,2)*Power(y,2) + \
-Power(y,4))*z)/8.;
-break;
-default:
-fprintf(stderr,"not implemented");
-break;
-}
-return ex;
-
-}
-
-double __fastcall TpointList::Imp(int j, int m, int n, int i, double x, double y, double z)
-{
-	double ex;
-	int code;
-        double Pi=3.141592653589793;
-
-	code = i*1000+j*100+m*10+n;
-
-/* Im p */
-switch (code) {
-case 1110 :
-ex = 0;
-break;
-case 2110 :
-ex = -Sqrt(3/(2.*Pi))/2.;
-break;
-case 3110 :
-ex = 0;
-break;
-case 1111 :
-ex = -(Sqrt(21/Pi)*x*y)/4.;
-break;
-case 2111 :
-ex = (Sqrt(21/Pi)*(-1 + 2*Power(x,2) + Power(y,2) + 2*Power(z,2)))/4.;
-break;
-case 3111 :
-ex = -(Sqrt(21/Pi)*y*z)/4.;
-break;
-case 1210 :
-ex = 0;
-break;
-case 2210 :
-ex = -(Sqrt(15/Pi)*z)/4.;
-break;
-case 3210 :
-ex = -(Sqrt(15/Pi)*y)/4.;
-break;
-case 1211 :
-ex = (-3*Sqrt(5/Pi)*x*y*z)/2.;
-break;
-case 2211 :
-ex = (3*Sqrt(5/Pi)*z*(-3 + 5*Power(x,2) + Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 3211 :
-ex = (3*Sqrt(5/Pi)*y*(-3 + 5*Power(x,2) + 5*Power(y,2) + Power(z,2)))/8.;
-break;
-case 1220 :
-ex = (Sqrt(15/Pi)*y)/4.;
-break;
-case 2220 :
-ex = (Sqrt(15/Pi)*x)/4.;
-break;
-case 3220 :
-ex = 0;
-break;
-case 1221 :
-ex = (-3*Sqrt(5/Pi)*y*(-3 + Power(x,2) + 5*Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 2221 :
-ex = (-3*Sqrt(5/Pi)*x*(-3 + 5*Power(x,2) + Power(y,2) + 5*Power(z,2)))/8.;
-break;
-case 3221 :
-ex = (3*Sqrt(5/Pi)*x*y*z)/2.;
-break;
-case 1310 :
-ex = (Sqrt(7/Pi)*x*y)/4.;
-break;
-case 2310 :
-ex = (Sqrt(7/Pi)*(Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 3310 :
-ex = -(Sqrt(7/Pi)*y*z);
-break;
-case 1311 :
-ex = -(Sqrt(77/Pi)*x*y*(-4 + 3*Power(x,2) + 3*Power(y,2) + \
-18*Power(z,2)))/16.;
-break;
-case 2311 :
-ex = -(Sqrt(77/Pi)*(3*Power(x,4) + 6*Power(y,4) + 8*Power(z,2) - \
-12*Power(z,4) + Power(x,2)*(-2 + 9*Power(y,2) - 9*Power(z,2)) + \
-Power(y,2)*(-6 + 9*Power(z,2))))/16.;
-break;
-case 3311 :
-ex = (Sqrt(77/Pi)*y*z*(-16 + 27*Power(x,2) + 27*Power(y,2) + \
-12*Power(z,2)))/16.;
-break;
-case 1320 :
-ex = (Sqrt(35/(2.*Pi))*y*z)/2.;
-break;
-case 2320 :
-ex = (Sqrt(35/(2.*Pi))*x*z)/2.;
-break;
-case 3320 :
-ex = (Sqrt(35/(2.*Pi))*x*y)/2.;
-break;
-case 1321 :
-ex = -(Sqrt(385/(2.*Pi))*y*z*(-2 + 3*Power(y,2) + 3*Power(z,2)))/4.;
-break;
-case 2321 :
-ex = -(Sqrt(385/(2.*Pi))*x*z*(-2 + 3*Power(x,2) + 3*Power(z,2)))/4.;
-break;
-case 3321 :
-ex = -(Sqrt(385/(2.*Pi))*x*y*(-2 + 3*Power(x,2) + 3*Power(y,2)))/4.;
-break;
-case 1330 :
-ex = -(Sqrt(105/Pi)*x*y)/4.;
-break;
-case 2330 :
-ex = (Sqrt(105/Pi)*(-Power(x,2) + Power(y,2)))/8.;
-break;
-case 3330 :
-ex = 0;
-break;
-case 1331 :
-ex = (Sqrt(1155/Pi)*x*y*(-4 + 3*Power(x,2) + 7*Power(y,2) + \
-6*Power(z,2)))/16.;
-break;
-case 2331 :
-ex = (Sqrt(1155/Pi)*(3*Power(x,4) + Power(y,2)*(2 - 2*Power(y,2) - \
-3*Power(z,2)) + Power(x,2)*(-2 - 3*Power(y,2) + 3*Power(z,2))))/16.;
-break;
-case 3331 :
-ex = (Sqrt(1155/Pi)*y*(-3*Power(x,2) + Power(y,2))*z)/16.;
-break;
-case 1410 :
-ex = (9*Sqrt(5/Pi)*x*y*z)/8.;
-break;
-case 2410 :
-ex = (3*Sqrt(5/Pi)*z*(3*Power(x,2) + 9*Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 3410 :
-ex = (9*Sqrt(5/Pi)*y*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1411 :
-ex = (-3*Sqrt(13/Pi)*x*y*z*(-15 + 9*Power(x,2) + 9*Power(y,2) + \
-37*Power(z,2)))/16.;
-break;
-case 2411 :
-ex = (-3*Sqrt(13/Pi)*z*(21*Power(x,4) + 39*Power(y,4) + 4*Power(z,2)*(5 - \
-7*Power(z,2)) + Power(x,2)*(-15 + 60*Power(y,2) - 7*Power(z,2)) + \
-Power(y,2)*(-45 + 67*Power(z,2))))/32.;
-break;
-case 3411 :
-ex = (-3*Sqrt(13/Pi)*y*(21*Power(x,4) + 21*Power(y,4) + 60*Power(z,2) - \
-52*Power(z,4) + 3*Power(x,2)*(-5 + 14*Power(y,2) - 29*Power(z,2)) - \
-3*Power(y,2)*(5 + 29*Power(z,2))))/32.;
-break;
-case 1420 :
-ex = (-3*Sqrt(5/(2.*Pi))*y*(3*Power(x,2) + Power(y,2) - 6*Power(z,2)))/8.;
-break;
-case 2420 :
-ex = (-3*Sqrt(5/(2.*Pi))*x*(Power(x,2) + 3*Power(y,2) - 6*Power(z,2)))/8.;
-break;
-case 3420 :
-ex = (9*Sqrt(5/(2.*Pi))*x*y*z)/2.;
-break;
-case 1421 :
-ex = (3*Sqrt(13/(2.*Pi))*y*(13*Power(x,4) + 7*Power(y,4) + 6*Power(z,2)*(5 - \
-7*Power(z,2)) - 5*Power(y,2)*(1 + 7*Power(z,2)) + Power(x,2)*(-15 + \
-20*Power(y,2) + 27*Power(z,2))))/16.;
-break;
-case 2421 :
-ex = (3*Sqrt(13/(2.*Pi))*x*(7*Power(x,4) + 13*Power(y,4) + 6*Power(z,2)*(5 - \
-7*Power(z,2)) + 5*Power(x,2)*(-1 + 4*Power(y,2) - 7*Power(z,2)) + \
-3*Power(y,2)*(-5 + 9*Power(z,2))))/16.;
-break;
-case 3421 :
-ex = (-3*Sqrt(13/(2.*Pi))*x*y*z*(-15 + 23*Power(x,2) + 23*Power(y,2) + \
-9*Power(z,2)))/4.;
-break;
-case 1430 :
-ex = (-9*Sqrt(35/Pi)*x*y*z)/8.;
-break;
-case 2430 :
-ex = (-9*Sqrt(35/Pi)*(Power(x,2) - Power(y,2))*z)/16.;
-break;
-case 3430 :
-ex = (3*Sqrt(35/Pi)*y*(-3*Power(x,2) + Power(y,2)))/16.;
-break;
-case 1431 :
-ex = (3*Sqrt(91/Pi)*x*y*z*(-15 + 9*Power(x,2) + 25*Power(y,2) + \
-21*Power(z,2)))/16.;
-break;
-case 2431 :
-ex = (3*Sqrt(91/Pi)*z*(21*Power(x,4) + Power(y,2)*(15 - 13*Power(y,2) - \
-21*Power(z,2)) - 3*Power(x,2)*(5 + 8*Power(y,2) - 7*Power(z,2))))/32.;
-break;
-case 3431 :
-ex = (-3*Sqrt(91/Pi)*y*(-3*Power(x,2) + Power(y,2))*(-5 + 7*Power(x,2) + \
-7*Power(y,2) - Power(z,2)))/32.;
-break;
-case 1440 :
-ex = (-3*Sqrt(35/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2)))/8.;
-break;
-case 2440 :
-ex = (3*Sqrt(35/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2)))/8.;
-break;
-case 3440 :
-ex = 0;
-break;
-case 1441 :
-ex = (-3*Sqrt(91/(2.*Pi))*y*(13*Power(x,4) + Power(y,2)*(5 - 7*Power(y,2) - \
-7*Power(z,2)) + Power(x,2)*(-15 + 22*Power(y,2) + 21*Power(z,2))))/16.;
-break;
-case 2441 :
-ex = (-3*Sqrt(91/(2.*Pi))*x*(7*Power(x,4) + Power(y,2)*(15 - 13*Power(y,2) - \
-21*Power(z,2)) + Power(x,2)*(-5 - 22*Power(y,2) + 7*Power(z,2))))/16.;
-break;
-case 3441 :
-ex = (3*Sqrt(91/(2.*Pi))*x*y*(Power(x,2) - Power(y,2))*z)/2.;
-break;
-default:
-fprintf(stderr,"not implemented");
-break;
-}
-return ex;
-
-}
-
-double __fastcall TpointList::Req(int j, int m, int n, int i, double x, double y, double z)
-{
-	double ex;
-	int code;
-        double Pi=3.141592653589793;
-
-	code = i*1000+j*100+m*10+n;
-
-/* Re q */
-switch (code) {
-case 1100 :
-ex = (Sqrt(15/(2.*Pi))*y)/2.;
-break;
-case 2100 :
-ex = -(Sqrt(15/(2.*Pi))*x)/2.;
-break;
-case 3100 :
-ex = 0;
-break;
-case 1101 :
-ex = (3*Sqrt(3/(2.*Pi))*y*(-5 + 7*Power(x,2) + 7*Power(y,2) + \
-7*Power(z,2)))/4.;
-break;
-case 2101 :
-ex = (-3*Sqrt(3/(2.*Pi))*x*(-5 + 7*Power(x,2) + 7*Power(y,2) + \
-7*Power(z,2)))/4.;
-break;
-case 3101 :
-ex = 0;
-break;
-case 1110 :
-ex = 0;
-break;
-case 2110 :
-ex = -(Sqrt(15/Pi)*z)/4.;
-break;
-case 3110 :
-ex = (Sqrt(15/Pi)*y)/4.;
-break;
-case 1111 :
-ex = 0;
-break;
-case 2111 :
-ex = (-3*Sqrt(3/Pi)*z*(-5 + 7*Power(x,2) + 7*Power(y,2) + 7*Power(z,2)))/8.;
-break;
-case 3111 :
-ex = (3*Sqrt(3/Pi)*y*(-5 + 7*Power(x,2) + 7*Power(y,2) + 7*Power(z,2)))/8.;
-break;
-case 1200 :
-ex = (Sqrt(105/(2.*Pi))*y*z)/2.;
-break;
-case 2200 :
-ex = -(Sqrt(105/(2.*Pi))*x*z)/2.;
-break;
-case 3200 :
-ex = 0;
-break;
-case 1201 :
-ex = (Sqrt(165/(2.*Pi))*y*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/4.;
-break;
-case 2201 :
-ex = -(Sqrt(165/(2.*Pi))*x*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/4.;
-break;
-case 3201 :
-ex = 0;
-break;
-case 1210 :
-ex = -(Sqrt(35/Pi)*x*y)/4.;
-break;
-case 2210 :
-ex = (Sqrt(35/Pi)*(Power(x,2) - Power(z,2)))/4.;
-break;
-case 3210 :
-ex = (Sqrt(35/Pi)*y*z)/4.;
-break;
-case 1211 :
-ex = -(Sqrt(55/Pi)*x*y*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/8.;
-break;
-case 2211 :
-ex = (Sqrt(55/Pi)*(Power(x,2) - Power(z,2))*(-7 + 9*Power(x,2) + \
-9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 3211 :
-ex = (Sqrt(55/Pi)*y*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 1220 :
-ex = (Sqrt(35/Pi)*y*z)/4.;
-break;
-case 2220 :
-ex = (Sqrt(35/Pi)*x*z)/4.;
-break;
-case 3220 :
-ex = -(Sqrt(35/Pi)*x*y)/2.;
-break;
-case 1221 :
-ex = (Sqrt(55/Pi)*y*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 2221 :
-ex = (Sqrt(55/Pi)*x*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 3221 :
-ex = -(Sqrt(55/Pi)*x*y*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/4.;
-break;
-case 1300 :
-ex = (-3*Sqrt(21/Pi)*y*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 2300 :
-ex = (3*Sqrt(21/Pi)*x*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 3300 :
-ex = 0;
-break;
-case 1301 :
-ex = (Sqrt(273/Pi)*y*(-11*Power(x,4) - 11*Power(y,4) + 4*Power(z,2)*(-9 + \
-11*Power(z,2)) + Power(y,2)*(9 + 33*Power(z,2)) + Power(x,2)*(9 - \
-22*Power(y,2) + 33*Power(z,2))))/16.;
-break;
-case 2301 :
-ex = (Sqrt(273/Pi)*x*(11*Power(x,4) + 11*Power(y,4) + 36*Power(z,2) - \
-44*Power(z,4) + Power(x,2)*(-9 + 22*Power(y,2) - 33*Power(z,2)) - \
-3*Power(y,2)*(3 + 11*Power(z,2))))/16.;
-break;
-case 3301 :
-ex = 0;
-break;
-case 1310 :
-ex = (-15*Sqrt(7/Pi)*x*y*z)/8.;
-break;
-case 2310 :
-ex = (3*Sqrt(7/Pi)*z*(11*Power(x,2) + Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 3310 :
-ex = (-3*Sqrt(7/Pi)*y*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1311 :
-ex = (-5*Sqrt(91/Pi)*x*y*z*(-9 + 11*Power(x,2) + 11*Power(y,2) + \
-11*Power(z,2)))/16.;
-break;
-case 2311 :
-ex = (Sqrt(91/Pi)*z*(121*Power(x,4) + 11*Power(y,4) + 36*Power(z,2) - \
-44*Power(z,4) + 11*Power(x,2)*(-9 + 12*Power(y,2) + 7*Power(z,2)) - \
-3*Power(y,2)*(3 + 11*Power(z,2))))/32.;
-break;
-case 3311 :
-ex = (Sqrt(91/Pi)*y*(-11*Power(x,4) - 11*Power(y,4) + 4*Power(z,2)*(-9 + \
-11*Power(z,2)) + Power(y,2)*(9 + 33*Power(z,2)) + Power(x,2)*(9 - \
-22*Power(y,2) + 33*Power(z,2))))/32.;
-break;
-case 1320 :
-ex = (3*Sqrt(35/(2.*Pi))*y*(Power(x,2) - Power(y,2) + 2*Power(z,2)))/8.;
-break;
-case 2320 :
-ex = (-3*Sqrt(35/(2.*Pi))*x*(Power(x,2) - Power(y,2) - 2*Power(z,2)))/8.;
-break;
-case 3320 :
-ex = (-3*Sqrt(35/(2.*Pi))*x*y*z)/2.;
-break;
-case 1321 :
-ex = (Sqrt(455/(2.*Pi))*y*(11*Power(x,4) - 11*Power(y,4) + 2*Power(z,2)*(-9 \
-+ 11*Power(z,2)) + Power(y,2)*(9 + 11*Power(z,2)) + Power(x,2)*(-9 + \
-33*Power(z,2))))/16.;
-break;
-case 2321 :
-ex = (Sqrt(455/(2.*Pi))*x*(-11*Power(x,4) + 11*Power(y,4) + 2*Power(z,2)*(-9 \
-+ 11*Power(z,2)) + Power(x,2)*(9 + 11*Power(z,2)) + Power(y,2)*(-9 + \
-33*Power(z,2))))/16.;
-break;
-case 3321 :
-ex = -(Sqrt(455/(2.*Pi))*x*y*z*(-9 + 11*Power(x,2) + 11*Power(y,2) + \
-11*Power(z,2)))/4.;
-break;
-case 1330 :
-ex = (-3*Sqrt(105/Pi)*x*y*z)/8.;
-break;
-case 2330 :
-ex = (-3*Sqrt(105/Pi)*(Power(x,2) - Power(y,2))*z)/16.;
-break;
-case 3330 :
-ex = (-3*Sqrt(105/Pi)*y*(-3*Power(x,2) + Power(y,2)))/16.;
-break;
-case 1331 :
-ex = -(Sqrt(1365/Pi)*x*y*z*(-9 + 11*Power(x,2) + 11*Power(y,2) + \
-11*Power(z,2)))/16.;
-break;
-case 2331 :
-ex = -(Sqrt(1365/Pi)*(Power(x,2) - Power(y,2))*z*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/32.;
-break;
-case 3331 :
-ex = -(Sqrt(1365/Pi)*y*(-3*Power(x,2) + Power(y,2))*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/32.;
-break;
-case 1400 :
-ex = (-3*Sqrt(55/Pi)*y*z*(3*Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 2400 :
-ex = (3*Sqrt(55/Pi)*x*z*(3*Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/8.;
-break;
-case 3400 :
-ex = 0;
-break;
-case 1401 :
-ex = (-15*Sqrt(3/Pi)*y*z*(39*Power(x,4) + 39*Power(y,4) + 44*Power(z,2) - \
-52*Power(z,4) + Power(x,2)*(-33 + 78*Power(y,2) - 13*Power(z,2)) - \
-Power(y,2)*(33 + 13*Power(z,2))))/16.;
-break;
-case 2401 :
-ex = (15*Sqrt(3/Pi)*x*z*(39*Power(x,4) + 39*Power(y,4) + 44*Power(z,2) - \
-52*Power(z,4) + Power(x,2)*(-33 + 78*Power(y,2) - 13*Power(z,2)) - \
-Power(y,2)*(33 + 13*Power(z,2))))/16.;
-break;
-case 3401 :
-ex = 0;
-break;
-case 1410 :
-ex = (9*Sqrt(11/Pi)*x*y*(Power(x,2) + Power(y,2) - 6*Power(z,2)))/16.;
-break;
-case 2410 :
-ex = (-3*Sqrt(11/Pi)*(3*Power(x,4) - 3*Power(y,2)*Power(z,2) + 4*Power(z,4) \
-+ 3*Power(x,2)*(Power(y,2) - 7*Power(z,2))))/16.;
-break;
-case 3410 :
-ex = (-3*Sqrt(11/Pi)*y*z*(3*Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1411 :
-ex = (9*Sqrt(15/Pi)*x*y*(13*Power(x,4) + 13*Power(y,4) + 66*Power(z,2) - \
-78*Power(z,4) + Power(x,2)*(-11 + 26*Power(y,2) - 65*Power(z,2)) - \
-Power(y,2)*(11 + 65*Power(z,2))))/32.;
-break;
-case 2411 :
-ex = (-3*Sqrt(15/Pi)*(39*Power(x,6) + 3*Power(x,4)*(-11 + 26*Power(y,2) - \
-78*Power(z,2)) + Power(z,2)*(-39*Power(y,4) - 44*Power(z,2) + 52*Power(z,4) \
-+ Power(y,2)*(33 + 13*Power(z,2))) + Power(x,2)*(39*Power(y,4) + \
-231*Power(z,2) - 221*Power(z,4) - 3*Power(y,2)*(11 + 91*Power(z,2)))))/32.;
-break;
-case 3411 :
-ex = (-3*Sqrt(15/Pi)*y*z*(39*Power(x,4) + 39*Power(y,4) + 44*Power(z,2) - \
-52*Power(z,4) + Power(x,2)*(-33 + 78*Power(y,2) - 13*Power(z,2)) - \
-Power(y,2)*(33 + 13*Power(z,2))))/32.;
-break;
-case 1420 :
-ex = (3*Sqrt(11/(2.*Pi))*y*z*(3*Power(x,2) - 4*Power(y,2) + \
-3*Power(z,2)))/4.;
-break;
-case 2420 :
-ex = (-3*Sqrt(11/(2.*Pi))*x*z*(4*Power(x,2) - 3*(Power(y,2) + \
-Power(z,2))))/4.;
-break;
-case 3420 :
-ex = (3*Sqrt(11/(2.*Pi))*x*y*(Power(x,2) + Power(y,2) - 6*Power(z,2)))/4.;
-break;
-case 1421 :
-ex = (3*Sqrt(15/(2.*Pi))*y*z*(39*Power(x,4) - 52*Power(y,4) - 33*Power(z,2) \
-+ 39*Power(z,4) + Power(y,2)*(44 - 13*Power(z,2)) + Power(x,2)*(-33 - \
-13*Power(y,2) + 78*Power(z,2))))/8.;
-break;
-case 2421 :
-ex = (-3*Sqrt(15/(2.*Pi))*x*z*(52*Power(x,4) - 39*Power(y,4) + 33*Power(z,2) \
-- 39*Power(z,4) + Power(y,2)*(33 - 78*Power(z,2)) + Power(x,2)*(-44 + \
-13*Power(y,2) + 13*Power(z,2))))/8.;
-break;
-case 3421 :
-ex = (3*Sqrt(15/(2.*Pi))*x*y*(13*Power(x,4) + 13*Power(y,4) + 66*Power(z,2) \
-- 78*Power(z,4) + Power(x,2)*(-11 + 26*Power(y,2) - 65*Power(z,2)) - \
-Power(y,2)*(11 + 65*Power(z,2))))/8.;
-break;
-case 1430 :
-ex = (-3*Sqrt(77/Pi)*x*y*(Power(x,2) - 3*Power(y,2) + 6*Power(z,2)))/16.;
-break;
-case 2430 :
-ex = (3*Sqrt(77/Pi)*(Power(x,4) + 3*Power(y,2)*Power(z,2) - \
-3*Power(x,2)*(Power(y,2) + Power(z,2))))/16.;
-break;
-case 3430 :
-ex = (-9*Sqrt(77/Pi)*y*(-3*Power(x,2) + Power(y,2))*z)/16.;
-break;
-case 1431 :
-ex = (-3*Sqrt(105/Pi)*x*y*(13*Power(x,4) - 39*Power(y,4) - 66*Power(z,2) + \
-78*Power(z,4) + Power(y,2)*(33 + 39*Power(z,2)) + Power(x,2)*(-11 - \
-26*Power(y,2) + 91*Power(z,2))))/32.;
-break;
-case 2431 :
-ex = (3*Sqrt(105/Pi)*(13*Power(x,6) + 3*Power(y,2)*Power(z,2)*(-11 + \
-13*Power(y,2) + 13*Power(z,2)) - Power(x,4)*(11 + 26*Power(y,2) + \
-26*Power(z,2)) + Power(x,2)*(-39*Power(y,4) + 33*Power(z,2) - 39*Power(z,4) \
-+ Power(y,2)*(33 - 39*Power(z,2)))))/32.;
-break;
-case 3431 :
-ex = (-9*Sqrt(105/Pi)*y*(-3*Power(x,2) + Power(y,2))*z*(-11 + 13*Power(x,2) \
-+ 13*Power(y,2) + 13*Power(z,2)))/32.;
-break;
-case 1440 :
-ex = (-3*Sqrt(77/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2))*z)/8.;
-break;
-case 2440 :
-ex = (3*Sqrt(77/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2))*z)/8.;
-break;
-case 3440 :
-ex = (-3*Sqrt(77/(2.*Pi))*x*y*(Power(x,2) - Power(y,2)))/2.;
-break;
-case 1441 :
-ex = (-3*Sqrt(105/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2))*z*(-11 + \
-13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/16.;
-break;
-case 2441 :
-ex = (3*Sqrt(105/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2))*z*(-11 + \
-13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/16.;
-break;
-case 3441 :
-ex = (-3*Sqrt(105/(2.*Pi))*x*y*(Power(x,2) - Power(y,2))*(-11 + \
-13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/4.;
-break;
-default:
-fprintf(stderr,"not implemented");
-break;
-}
-return ex;
-
-}
-
-double __fastcall TpointList::Imq(int j, int m, int n, int i, double x, double y, double z)
-{
-	double ex;
-	int code;
-        double Pi=3.141592653589793;
-
-	code = i*1000+j*100+m*10+n;
-
-/* Im q */
-switch (code) {
-case 1110 :
-ex = (Sqrt(15/Pi)*z)/4.;
-break;
-case 2110 :
-ex = 0;
-break;
-case 3110 :
-ex = -(Sqrt(15/Pi)*x)/4.;
-break;
-case 1111 :
-ex = (3*Sqrt(3/Pi)*z*(-5 + 7*Power(x,2) + 7*Power(y,2) + 7*Power(z,2)))/8.;
-break;
-case 2111 :
-ex = 0;
-break;
-case 3111 :
-ex = (-3*Sqrt(3/Pi)*x*(-5 + 7*Power(x,2) + 7*Power(y,2) + 7*Power(z,2)))/8.;
-break;
-case 1210 :
-ex = (Sqrt(35/Pi)*(-Power(y,2) + Power(z,2)))/4.;
-break;
-case 2210 :
-ex = (Sqrt(35/Pi)*x*y)/4.;
-break;
-case 3210 :
-ex = -(Sqrt(35/Pi)*x*z)/4.;
-break;
-case 1211 :
-ex = -(Sqrt(55/Pi)*(Power(y,2) - Power(z,2))*(-7 + 9*Power(x,2) + \
-9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 2211 :
-ex = (Sqrt(55/Pi)*x*y*(-7 + 9*Power(x,2) + 9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 3211 :
-ex = -(Sqrt(55/Pi)*x*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/8.;
-break;
-case 1220 :
-ex = -(Sqrt(35/Pi)*x*z)/4.;
-break;
-case 2220 :
-ex = (Sqrt(35/Pi)*y*z)/4.;
-break;
-case 3220 :
-ex = (Sqrt(35/Pi)*(Power(x,2) - Power(y,2)))/4.;
-break;
-case 1221 :
-ex = -(Sqrt(55/Pi)*x*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + \
-9*Power(z,2)))/8.;
-break;
-case 2221 :
-ex = (Sqrt(55/Pi)*y*z*(-7 + 9*Power(x,2) + 9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 3221 :
-ex = (Sqrt(55/Pi)*(Power(x,2) - Power(y,2))*(-7 + 9*Power(x,2) + \
-9*Power(y,2) + 9*Power(z,2)))/8.;
-break;
-case 1310 :
-ex = (-3*Sqrt(7/Pi)*z*(Power(x,2) + 11*Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 2310 :
-ex = (15*Sqrt(7/Pi)*x*y*z)/8.;
-break;
-case 3310 :
-ex = (3*Sqrt(7/Pi)*x*(Power(x,2) + Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1311 :
-ex = (Sqrt(91/Pi)*z*(-11*Power(x,4) - 121*Power(y,4) + Power(y,2)*(99 - \
-77*Power(z,2)) + 4*Power(z,2)*(-9 + 11*Power(z,2)) + Power(x,2)*(9 - \
-132*Power(y,2) + 33*Power(z,2))))/32.;
-break;
-case 2311 :
-ex = (5*Sqrt(91/Pi)*x*y*z*(-9 + 11*Power(x,2) + 11*Power(y,2) + \
-11*Power(z,2)))/16.;
-break;
-case 3311 :
-ex = (Sqrt(91/Pi)*x*(11*Power(x,4) + 11*Power(y,4) + 36*Power(z,2) - \
-44*Power(z,4) + Power(x,2)*(-9 + 22*Power(y,2) - 33*Power(z,2)) - \
-3*Power(y,2)*(3 + 11*Power(z,2))))/32.;
-break;
-case 1320 :
-ex = (3*Sqrt(35/(2.*Pi))*x*(Power(y,2) - Power(z,2)))/4.;
-break;
-case 2320 :
-ex = (-3*Sqrt(35/(2.*Pi))*y*(Power(x,2) - Power(z,2)))/4.;
-break;
-case 3320 :
-ex = (3*Sqrt(35/(2.*Pi))*(Power(x,2) - Power(y,2))*z)/4.;
-break;
-case 1321 :
-ex = (Sqrt(455/(2.*Pi))*x*(Power(y,2) - Power(z,2))*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/8.;
-break;
-case 2321 :
-ex = -(Sqrt(455/(2.*Pi))*y*(Power(x,2) - Power(z,2))*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/8.;
-break;
-case 3321 :
-ex = (Sqrt(455/(2.*Pi))*(Power(x,2) - Power(y,2))*z*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/8.;
-break;
-case 1330 :
-ex = (3*Sqrt(105/Pi)*(Power(x,2) - Power(y,2))*z)/16.;
-break;
-case 2330 :
-ex = (-3*Sqrt(105/Pi)*x*y*z)/8.;
-break;
-case 3330 :
-ex = (-3*Sqrt(105/Pi)*x*(Power(x,2) - 3*Power(y,2)))/16.;
-break;
-case 1331 :
-ex = (Sqrt(1365/Pi)*(Power(x,2) - Power(y,2))*z*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/32.;
-break;
-case 2331 :
-ex = -(Sqrt(1365/Pi)*x*y*z*(-9 + 11*Power(x,2) + 11*Power(y,2) + \
-11*Power(z,2)))/16.;
-break;
-case 3331 :
-ex = -(Sqrt(1365/Pi)*x*(Power(x,2) - 3*Power(y,2))*(-9 + 11*Power(x,2) + \
-11*Power(y,2) + 11*Power(z,2)))/32.;
-break;
-case 1410 :
-ex = (3*Sqrt(11/Pi)*(3*Power(y,4) - 21*Power(y,2)*Power(z,2) + 4*Power(z,4) \
-+ 3*Power(x,2)*(Power(y,2) - Power(z,2))))/16.;
-break;
-case 2410 :
-ex = (-9*Sqrt(11/Pi)*x*y*(Power(x,2) + Power(y,2) - 6*Power(z,2)))/16.;
-break;
-case 3410 :
-ex = (3*Sqrt(11/Pi)*x*z*(3*Power(x,2) + 3*Power(y,2) - 4*Power(z,2)))/16.;
-break;
-case 1411 :
-ex = (3*Sqrt(15/Pi)*(39*Power(y,6) - 44*Power(z,4) + 52*Power(z,6) + \
-39*Power(x,4)*(Power(y,2) - Power(z,2)) - 3*Power(y,4)*(11 + 78*Power(z,2)) \
-+ Power(y,2)*(231*Power(z,2) - 221*Power(z,4)) + Power(x,2)*(78*Power(y,4) + \
-Power(z,2)*(33 + 13*Power(z,2)) - 3*Power(y,2)*(11 + 91*Power(z,2)))))/32.;
-break;
-case 2411 :
-ex = (-9*Sqrt(15/Pi)*x*y*(13*Power(x,4) + 13*Power(y,4) + 66*Power(z,2) - \
-78*Power(z,4) + Power(x,2)*(-11 + 26*Power(y,2) - 65*Power(z,2)) - \
-Power(y,2)*(11 + 65*Power(z,2))))/32.;
-break;
-case 3411 :
-ex = (3*Sqrt(15/Pi)*x*z*(39*Power(x,4) + 39*Power(y,4) + 44*Power(z,2) - \
-52*Power(z,4) + Power(x,2)*(-33 + 78*Power(y,2) - 13*Power(z,2)) - \
-Power(y,2)*(33 + 13*Power(z,2))))/32.;
-break;
-case 1420 :
-ex = (3*Sqrt(11/(2.*Pi))*x*z*(Power(x,2) + 15*Power(y,2) - \
-6*Power(z,2)))/8.;
-break;
-case 2420 :
-ex = (-3*Sqrt(11/(2.*Pi))*y*z*(15*Power(x,2) + Power(y,2) - \
-6*Power(z,2)))/8.;
-break;
-case 3420 :
-ex = (-3*Sqrt(11/(2.*Pi))*(Power(x,2) - Power(y,2))*(Power(x,2) + Power(y,2) \
-- 6*Power(z,2)))/8.;
-break;
-case 1421 :
-ex = (3*Sqrt(15/(2.*Pi))*x*z*(13*Power(x,4) + Power(x,2)*(-11 + \
-208*Power(y,2) - 65*Power(z,2)) + 3*(65*Power(y,4) + 22*Power(z,2) - \
-26*Power(z,4) + Power(y,2)*(-55 + 39*Power(z,2)))))/16.;
-break;
-case 2421 :
-ex = (-3*Sqrt(15/(2.*Pi))*y*z*(195*Power(x,4) + 13*Power(y,4) + \
-66*Power(z,2) - 78*Power(z,4) - Power(y,2)*(11 + 65*Power(z,2)) + \
-Power(x,2)*(-165 + 208*Power(y,2) + 117*Power(z,2))))/16.;
-break;
-case 3421 :
-ex = (-3*Sqrt(15/(2.*Pi))*(Power(x,2) - Power(y,2))*(13*Power(x,4) + \
-13*Power(y,4) + 66*Power(z,2) - 78*Power(z,4) + Power(x,2)*(-11 + \
-26*Power(y,2) - 65*Power(z,2)) - Power(y,2)*(11 + 65*Power(z,2))))/16.;
-break;
-case 1430 :
-ex = (3*Sqrt(77/Pi)*(Power(y,4) - 3*Power(y,2)*Power(z,2) - \
-3*Power(x,2)*(Power(y,2) - Power(z,2))))/16.;
-break;
-case 2430 :
-ex = (3*Sqrt(77/Pi)*x*y*(3*Power(x,2) - Power(y,2) - 6*Power(z,2)))/16.;
-break;
-case 3430 :
-ex = (-9*Sqrt(77/Pi)*x*(Power(x,2) - 3*Power(y,2))*z)/16.;
-break;
-case 1431 :
-ex = (-3*Sqrt(105/Pi)*(39*Power(x,4)*(Power(y,2) - Power(z,2)) + \
-Power(y,2)*(-13*Power(y,4) - 33*Power(z,2) + 39*Power(z,4) + Power(y,2)*(11 \
-+ 26*Power(z,2))) + Power(x,2)*(26*Power(y,4) + 33*Power(z,2) - \
-39*Power(z,4) + Power(y,2)*(-33 + 39*Power(z,2)))))/32.;
-break;
-case 2431 :
-ex = (3*Sqrt(105/Pi)*x*y*(39*Power(x,4) - 13*Power(y,4) + 66*Power(z,2) - \
-78*Power(z,4) + Power(y,2)*(11 - 91*Power(z,2)) + Power(x,2)*(-33 + \
-26*Power(y,2) - 39*Power(z,2))))/32.;
-break;
-case 3431 :
-ex = (-9*Sqrt(105/Pi)*x*(Power(x,2) - 3*Power(y,2))*z*(-11 + 13*Power(x,2) + \
-13*Power(y,2) + 13*Power(z,2)))/32.;
-break;
-case 1440 :
-ex = (-3*Sqrt(77/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2))*z)/8.;
-break;
-case 2440 :
-ex = (-3*Sqrt(77/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2))*z)/8.;
-break;
-case 3440 :
-ex = (3*Sqrt(77/(2.*Pi))*(Power(x,4) - 6*Power(x,2)*Power(y,2) + \
-Power(y,4)))/8.;
-break;
-case 1441 :
-ex = (-3*Sqrt(105/(2.*Pi))*x*(Power(x,2) - 3*Power(y,2))*z*(-11 + \
-13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/16.;
-break;
-case 2441 :
-ex = (-3*Sqrt(105/(2.*Pi))*y*(-3*Power(x,2) + Power(y,2))*z*(-11 + \
-13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/16.;
-break;
-case 3441 :
-ex = (3*Sqrt(105/(2.*Pi))*(Power(x,4) - 6*Power(x,2)*Power(y,2) + \
-Power(y,4))*(-11 + 13*Power(x,2) + 13*Power(y,2) + 13*Power(z,2)))/16.;
-break;
-default:
-fprintf(stderr,"not implemented");
-break;
-}
-return ex;
-
-}
 //----------------------constructor-----------------------------------------
 __fastcall TpointList::TpointList(void)
     : TObject()
@@ -7033,7 +7699,7 @@ __fastcall TpointList::TpointList(void)
         kriging=false;
         //c1=50.;//10.; //weight of rel.divergence
         //c2=0.15;//0.25;//
-        minTrajLength=10;
+        minTrajLength=3;
         PathSet=false;
         numOfFrames=200;
         changed=true;
@@ -7049,10 +7715,12 @@ void __fastcall TmainForm::doGridBtnClick(TObject *Sender)
     pointList->setPathAndFiles2();
     mainForm->Refresh();
 
-    //if(1<2){
+    if(1<2){
        pointList->makeCor();
-    //}
-    
+    }
+    pointList->minX=StrToFloat(minXEdit->Text);
+    pointList->minY=StrToFloat(minYEdit->Text);
+    pointList->minZ=StrToFloat(minZEdit->Text);
     
 
     pointList->count=0;
@@ -7062,6 +7730,8 @@ void __fastcall TmainForm::doGridBtnClick(TObject *Sender)
     for (int i=pointList->firstFile;i<pointList->lastFile+1;i++){
        fileNum2Edit->Text=IntToStr(i);
        fileNum2Edit->Refresh();
+       meanPointsInSphereEdit->Text=FloatToStr(pointList->meanPointsInSphere);
+       meanPointsInSphereEdit->Refresh();
        meanDissEdit->Text=FloatToStr(pointList->meanDiss);
        meanDissEdit->Refresh();
        pointList->readXUAPFileOld(i,false);
@@ -7071,7 +7741,7 @@ void __fastcall TmainForm::doGridBtnClick(TObject *Sender)
        const char *filename;
        filename=name.c_str();
        fpp = fopen(filename,"w");
-       //pointList->doLinearInterp(fpp);
+       pointList->doLinearInterp(fpp);
        fclose (fpp);
        meanSuccessDivEdit->Text=FloatToStr(100.*(double)pointList->count2/(double)pointList->count);
        meanSuccessDivEdit->Refresh();
@@ -7128,10 +7798,10 @@ void __fastcall TmainForm::linkBtnClick(TObject *Sender)
     }
     pointList->setPathAndFiles2();
     mainForm->Refresh();
-    //if(1<2){
+    if(1<2){
        pointList->makeCor();
-    //}
-    //pointList->reLink();
+    }
+    pointList->reLink();
 }
 //---------------------------------------------------------------------------
 
@@ -7227,11 +7897,11 @@ void __fastcall TmainForm::prevXUPBtnClick(TObject *Sender)
        }
        pointList->doCubicSplinesTwenty(true,pointInd);
        if(pointList->point[10][pointInd][14]>0){
-          xuapForm->Series10->AddXY(numOnTrack,pointList->point[10][pointInd][2]*1000,'.',clTeeColor);
-          xuapForm->Series11->AddXY(numOnTrack,pointList->point[10][pointInd][3]*1000,'.',clTeeColor);
+          //xuapForm->Series10->AddXY(numOnTrack,pointList->point[10][pointInd][2]*1000,'.',clTeeColor);
+          //xuapForm->Series11->AddXY(numOnTrack,pointList->point[10][pointInd][3]*1000,'.',clTeeColor);
           xuapForm->Series12->AddXY(numOnTrack,pointList->point[10][pointInd][4]*1000,'.',clTeeColor);
-          xuapForm->Series1->AddXY(numOnTrack,pointList->point[10][pointInd][5]*1000,'.',clTeeColor);
-          xuapForm->Series2->AddXY(numOnTrack,pointList->point[10][pointInd][6]*1000,'.',clTeeColor);
+          //xuapForm->Series1->AddXY(numOnTrack,pointList->point[10][pointInd][5]*1000,'.',clTeeColor);
+          //xuapForm->Series2->AddXY(numOnTrack,pointList->point[10][pointInd][6]*1000,'.',clTeeColor);
           xuapForm->Series3->AddXY(numOnTrack,pointList->point[10][pointInd][7]*1000,'.',clTeeColor);
           xuapForm->Series4->AddXY(numOnTrack,pointList->point[10][pointInd][8]*1000,'.',clTeeColor);
           xuapForm->Series5->AddXY(numOnTrack,pointList->point[10][pointInd][9]*1000,'.',clTeeColor);
@@ -7283,7 +7953,7 @@ void __fastcall TmainForm::prevTrajBtnClick(TObject *Sender)
 
     for(int i=pointList->firstFile;i<pointList->lastFile+1;i++){
        for(int j=0;j<1000;j++){
-           //pointList->occ[i][j]=false;
+           pointList->occ[i][j]=false;
        }
     }
 
@@ -7294,6 +7964,7 @@ void __fastcall TmainForm::prevTrajBtnClick(TObject *Sender)
     filename=name.c_str();
     fpp = fopen(filename,"w");
 
+
     fileNum2Edit->Text=IntToStr(startFile);
     startPoint=StrToInt(trajForm->startPointEdit->Text);
     mainForm->Refresh();
@@ -7301,7 +7972,7 @@ void __fastcall TmainForm::prevTrajBtnClick(TObject *Sender)
     trajForm->Refresh();
     bool cont=true;
     while(cont){
-       pointList->followTrajPointHarmonics(fpp,startFile,startPoint,false);
+       pointList->followTrajPointLinQuadforAccDeriv(fpp,startFile,startPoint,false);
        if(pointList->numInTraj>19){
           cont=false;
        }
@@ -7432,6 +8103,16 @@ void __fastcall TmainForm::rotaBtnClick(TObject *Sender)
     mainForm->Caption=pointList->baseName;
     mainForm->Refresh();
 
+    if(1>2){
+       pointList->readWeights();
+    }
+
+    for(int i=pointList->firstFile;i<pointList->lastFile+1;i++){
+       for(int j=0;j<1000;j++){
+           pointList->occ[i][j]=false;
+       }
+    }
+
     pointList->count=0;
     pointList->meanPointsInSphere=0;
     pointList->meanPointsInSphereB=0;
@@ -7447,16 +8128,8 @@ void __fastcall TmainForm::rotaBtnClick(TObject *Sender)
     pointList->count6=0;
     pointList->count7=0;
     pointList->count8=0;
-    pointList->count9=0;
-
-    for(int i=0;i<10001;i++){
-       for(int j=0;j<1500;j++){
-           pointList->occ[i][j]=false;
-       }
-    }
 
     for (int i=pointList->firstFile;i<pointList->lastFile+1;i++){
-
        fileNum2Edit->Text=IntToStr(i);
        mainForm->Refresh();
        FILE *fpp;
@@ -7465,15 +8138,19 @@ void __fastcall TmainForm::rotaBtnClick(TObject *Sender)
        const char *filename;
        filename=name.c_str();
        fpp = fopen(filename,"w");
-       pointList->followTrajPointHarmonics(fpp,i,0,true);
+       pointList->followTrajPointLinQuadforAccDeriv(fpp,i,0,true);
        fclose (fpp);
-      
-       
+       mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count2/(double)pointList->count+0.5));
+       mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count+0.5));
+       mainForm->meanSuccessDivAEdit->Text=IntToStr((int)(100.*(double)pointList->count5/(double)pointList->count+0.5));
+       ///curvature and grad kinetic energy stuff
+       if(mainForm->interpolRadioGroup->ItemIndex==1){
+          mainForm->meanSuccessCurvEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count+0.5));
+          mainForm->meanSuccessGradKEdit->Text=IntToStr((int)(100.*(double)pointList->count8/(double)pointList->count+0.5));
+       }
+       ///end urvature and grad kinetic energy stuff
        mainForm->Refresh();
-    }
-
-    //exit(0 - '0');
-
+    }      
 }
 //---------------------------------------------------------------------------
 
@@ -7492,7 +8169,7 @@ void __fastcall TmainForm::gridBtnClick(TObject *Sender)
 
     for(int i=pointList->firstFile;i<pointList->lastFile+1;i++){
        for(int j=0;j<1000;j++){
-           //pointList->occ[i][j]=false;
+           pointList->occ[i][j]=false;
        }
     }
 
@@ -7522,10 +8199,17 @@ void __fastcall TmainForm::gridBtnClick(TObject *Sender)
        const char *filename;
        filename=name.c_str();
        fpp = fopen(filename,"w");
-       //pointList->followTrajPointLinQuadforAccDerivGrid(fpp,i,0,true);
+       pointList->followTrajPointLinQuadforAccDerivGrid(fpp,i,0,true);
        fclose (fpp);
-      
-       
+       mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count2/(double)pointList->count+0.5));
+       mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count+0.5));
+       mainForm->meanSuccessDivAEdit->Text=IntToStr((int)(100.*(double)pointList->count5/(double)pointList->count+0.5));
+       ///curvature and grad kinetic energy stuff
+       if(mainForm->interpolRadioGroup->ItemIndex==1){
+          mainForm->meanSuccessCurvEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count+0.5));
+          mainForm->meanSuccessGradKEdit->Text=IntToStr((int)(100.*(double)pointList->count8/(double)pointList->count+0.5));
+       }
+       ///end urvature and grad kinetic energy stuff
        mainForm->Refresh();
     }      
 }
@@ -7556,9 +8240,8 @@ void __fastcall TmainForm::filterGridBtnClick(TObject *Sender)
     pointList->count6=0;
     pointList->count7=0;
     pointList->count8=0;
-    pointList->count9=0;
     
-    int filtSize=0;
+    int filtSize=(int)(StrToFloat(mainForm->filtEdit->Text)/2);
     double viscosity=StrToFloat(mainForm->viscEdit->Text);
     int Reynolds;
 
@@ -7574,72 +8257,21 @@ void __fastcall TmainForm::filterGridBtnClick(TObject *Sender)
        pointList->FilterGrid(fpp,i);
        fclose (fpp);
        if(pointList->count>0){
-          
+          mainForm->meanSuccessDivEdit->Text=IntToStr((int)(100.*(double)pointList->count2/(double)pointList->count+0.5));
+          mainForm->meanSuccessAccEdit->Text=IntToStr((int)(100.*(double)pointList->count4/(double)pointList->count+0.5));
+          mainForm->meanSuccessDivAEdit->Text=IntToStr((int)(100.*(double)pointList->count5/(double)pointList->count+0.5));
           meanDissEdit->Text=IntToStr((int)(1.e6*pointList->meanDiss/(double)pointList->count2+0.5));
           Reynolds=(int)((pow(pointList->meanUisq/(double)pointList->count2,0.5)*pow(pointList->meanUisq/pointList->meanDudxsq,0.5))/viscosity+0.5);
           mainForm->reEdit->Text=IntToStr(Reynolds);
-         
+          ///curvature and grad kinetic energy stuff
+          if(mainForm->interpolRadioGroup->ItemIndex==1){
+             mainForm->meanSuccessCurvEdit->Text=IntToStr((int)(100.*(double)pointList->count7/(double)pointList->count+0.5));
+             mainForm->meanSuccessGradKEdit->Text=IntToStr((int)(100.*(double)pointList->count8/(double)pointList->count+0.5));
+          }
        }
        ///end urvature and grad kinetic energy stuff
        mainForm->Refresh();
     }        
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TmainForm::risoETHBtnClick(TObject *Sender)
-{
-   pointList=new TpointList();
-   pointList->setPathAndFiles7();
-   pointList->readWriteRisoETH();
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TmainForm::ETHRisoeBtnClick(TObject *Sender)
-{
-   pointList=new TpointList();
-   pointList->setPathAndFiles8();
-   pointList->readWriteETHRiso();
-}
-//---------------------------------------------------------------------------
-static void sort(double minDistB[],int minDistBIndex[],int index)
-{
-   bool done=false;
-   double hlpVal;
-   int hlpInt;
-
-   //bubble sorting
-   while(!done){
-       done=true;
-       for(int i=index-1;i>0;i--){
-           if(minDistB[i]<minDistB[i-1]){
-              //exchange
-              done=false;
-              hlpVal=minDistB[i];
-              hlpInt=minDistBIndex[i];
-              minDistB[i]=minDistB[i-1];
-              minDistBIndex[i]=minDistBIndex[i-1];
-              minDistB[i-1]=hlpVal;
-              minDistBIndex[i-1]=hlpInt;
-           }
-       }
-   }
-}
-//---------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-void __fastcall TmainForm::Button1Click(TObject *Sender)
-{
-     pointList=new TpointList();
-     pointList->setPathAndFiles9();
-     pointList->writeBinary();
 }
 //---------------------------------------------------------------------------
 

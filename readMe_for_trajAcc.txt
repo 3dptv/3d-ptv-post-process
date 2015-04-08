@@ -1,45 +1,54 @@
-Readme for trajAcc format from June 2005
-
 Each file trajAcc.xxx contains all trajectories that begin at frame number xxx.
+Points that belong to the same trajectory have the same 'start' number at column 31.
+Columns 33-47 are produced when 'also curv and grad k' is checked. 
+It produces the unit vectors of the velocity field and its gradient tensor (33-44)
+AND the gradient of the kinetic energy k=1/2 u_iu_i. 
 
-
-                  for(int ii=0;ii<numInTraj-2*pm;ii++){
-                     fprintf(fpp, "%lf\t", xp[ii]);//1
-                     fprintf(fpp, "%lf\t", yp[ii]);//2
-                     fprintf(fpp, "%lf\t", zp[ii]);//3
-                     fprintf(fpp, "%lf\t", up[ii]);//4
-                     fprintf(fpp, "%lf\t", vp[ii]);//5
-                     fprintf(fpp, "%lf\t", wp[ii]);//6
-                     fprintf(fpp, "%lf\t", axp[ii]);//7
-                     fprintf(fpp, "%lf\t", ayp[ii]);//8
-                     fprintf(fpp, "%lf\t", azp[ii]);//9
-                     
-                     fprintf(fpp, "%lf\t", dudxp[ii]);//10
-                     fprintf(fpp, "%lf\t", dudyp[ii]);//11
-                     fprintf(fpp, "%lf\t", dudzp[ii]);//12
-                     fprintf(fpp, "%lf\t", dvdxp[ii]);//13
-                     fprintf(fpp, "%lf\t", dvdyp[ii]);//14
-                     fprintf(fpp, "%lf\t", dvdzp[ii]);//15
-                     fprintf(fpp, "%lf\t", dwdxp[ii]);//16
-                     fprintf(fpp, "%lf\t", dwdyp[ii]);//17
-                     fprintf(fpp, "%lf\t", dwdzp[ii]);//18
-                     fprintf(fpp, "%lf\t", dudtp[ii]);//19
-                     fprintf(fpp, "%lf\t", dvdtp[ii]);//20
-                     fprintf(fpp, "%lf\t", dwdtp[ii]);//21
-
-                     fprintf(fpp, "%lf\t", daxdxp[ii]);//22
-                     fprintf(fpp, "%lf\t", daxdyp[ii]);//23
-                     fprintf(fpp, "%lf\t", daxdzp[ii]);//24
-                     fprintf(fpp, "%lf\t", daydxp[ii]);//25
-                     fprintf(fpp, "%lf\t", daydyp[ii]);//26
-                     fprintf(fpp, "%lf\t", daydzp[ii]);//27
-                     fprintf(fpp, "%lf\t", dazdxp[ii]);//28
-                     fprintf(fpp, "%lf\t", dazdyp[ii]);//29
-                     fprintf(fpp, "%lf\t", dazdzp[ii]);//30
-
-                     fprintf(fpp, "%lf\t", NXp[ii]);//31
-                     fprintf(fpp, "%lf\t", NYp[ii]);//32
-                     fprintf(fpp, "%lf\t", NZp[ii]);//33
-
-                     fprintf(fpp, "%lf\n", (double)(ii));//34
+x  	column 1
+y  	column 2
+z  	column 3
+u  	column 4
+v  	column 5
+w  	column 6
+dudx  	column 7
+dudy  	column 8
+dudz  	column 9
+dvdx  	column 10
+dvdy  	column 11
+dvdz  	column 12
+dwdx  	column 13
+dwdy  	column 14
+dwdz  	column 15
+dudt  	column 16
+dvdt  	column 17
+dwdt  	column 18
+ax  	column 19
+ay  	column 20
+az  	column 21
+daxdx  	column 22
+daxdy  	column 23
+daxdz  	column 24
+daydx  	column 25
+daydy  	column 26
+daydz  	column 27
+dazdx  	column 28
+dazdy  	column 29
+dazdz  	column 30
+start	column 31
+age	column 32
   
+nx  	column 33
+ny  	column 34
+nz	column 35
+dnxdx  	column 36
+dnxdy  	column 37
+dnxdz  	column 38
+dnydx  	column 39
+dnydy  	column 40
+dnydz  	column 41
+dnzdx  	column 42
+dnzdy  	column 43  
+dnzdz  	column 44
+dkdx  	column 45
+dkdy  	column 46
+dkdz  	column 47
