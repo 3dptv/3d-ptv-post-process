@@ -3,22 +3,21 @@
 // are changed infrequently
 //
 
-// #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Window headers
+#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 
 #pragma once
 
 
 #include <iostream>
-// #include <tchar.h>
-#include <cstring>
+#include <tchar.h>
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-// #include <malloc.h>
+#include <malloc.h>
 #include <fstream>
-#include <string>
+#include <string.h>
 #include <float.h>
 #include <time.h>
 using namespace std;

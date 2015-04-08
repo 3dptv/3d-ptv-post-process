@@ -1,12 +1,11 @@
 1	                      %make xuap.* files?                
-1	                      %make trajPoint.* files?
-1						  %create derivatives? 
+1	                      %make trajPoint.* files? 
 0	                      %make p_trajPoint.* files?
 0	                      %make H_trajPoint.* files?
-/Users/alex/Documents/PTV/0104_water    %path where ptv_is.* files are
-100001	                  %firstFile                
-103000	                  %lastFile                 
-0.0167	                  %delta_t 2 msec - just a guess
+D:/liberzon/PTV/Wesleyan_Data/res/    %path where ptv_is.* files are
+1	                  %firstFile                
+99	                  %lastFile                 
+0.002	                  %delta_t 2 msec - just a guess
 0.000001	              %viscosity - water
 21                        %max lenght of polynomial
 0                         %min left/right                 
