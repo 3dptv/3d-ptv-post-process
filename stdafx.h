@@ -3,22 +3,21 @@
 // are changed infrequently
 //
 
-// #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Window headers
+#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 
 #pragma once
 
 
 #include <iostream>
-// #include <tchar.h>
-#include <cstring>
+#include <tchar.h>
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-// #include <malloc.h>
+#include <malloc.h>
 #include <fstream>
-#include <string>
+#include <string.h>
 #include <float.h>
 #include <time.h>
 using namespace std;
@@ -31,7 +30,7 @@ struct TpointList
   int firstFile;
   int lastFile;
   int PL,minLeftRight;
-  int count,count2,count3,count4,count5,count6;
+  int count,count2,count3,count4,count5;
 
   double maxVel;
   double meanVel;
@@ -42,11 +41,6 @@ struct TpointList
   double meanDudxsq;
   double Re;
   
-  bool xuap;
-  bool traj_point;
-  bool derivatives;
-  bool pressure;
-  bool Hessian;
 
   char path[256];
 
@@ -55,9 +49,15 @@ struct TpointList
   int polyConst;
   int maxRank;
   double maxRadius;
-  double weDiv;
-  double weAcc;
-  double viscosity;
+  double minx;
+  double maxx;
+  double miny;
+  double maxy;
+  double minz;
+  double maxz;
+  double dex;
+  double dey;
+  double dez;
 
   double point[200][7000][48];
   bool occ[10000][7000];
@@ -155,3 +155,4 @@ struct TpointList
 
 
 // TODO: reference additional headers your program requires here
+
