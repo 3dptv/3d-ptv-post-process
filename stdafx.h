@@ -43,8 +43,6 @@ struct TpointList
   
   bool xuap;
   bool traj_point;
-  bool pressure;
-  bool Hessian;
 
   char path[256];
 
@@ -57,8 +55,8 @@ struct TpointList
   double weAcc;
   double viscosity;
 
-  double point[200][7000][48];
-  bool occ[10000][7000];
+  double point[300][2000][16];
+  bool occ[10000][1500];
   //int fast_search[200][12][12][12][100];
 
   int numOfFrames;
@@ -115,24 +113,8 @@ struct TpointList
   double Yay[300];
   double Yax[300];
 
-  double YuxB[300];
-  double YuyB[300];
-  double YuzB[300];
-  double YvxB[300];
-  double YvyB[300];
-  double YvzB[300];
-  double YwxB[300];
-  double YwyB[300];
-  double YwzB[300];
-
-  double YpxB[300];
-  double YpyB[300];
-  double YpzB[300];
-
   double Aij[3][3];
   double Aaij[3][3];
-  double uxx[9];
-  double pij[3][3];
 
   double pointPerRadius[300][2]; //0.1mm resolution up to 10mm.
   int dis[300];
