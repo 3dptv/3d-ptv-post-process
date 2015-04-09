@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////////////
 //
-// this code was written by Beat Luthi at IfU, ETH Zürich, Okt 2007
+// this code was written by Beat Luthi at IfU, ETH ZÃ¼rich, Okt 2007
 // and updatet together with Marc Wolf to have flexible kernel length for the
 // cubic polynomial fits along the trajectories, it used to be fixed at 21
 //
@@ -10,6 +10,7 @@
 // luethi@photrack.ch
 //
 // last update/change: August 2011 Marc Wolf
+// Updated for 3D-PTV: April 2015 Alex Liberzon (@alexlib)
 //
 //////////////////////////////////////////////////////////////////////////////
 
@@ -31,3 +32,6 @@ the format for the "trajPOint.xxx" are 33 columns, described in the picture
 2) (more involved)
 if you want to change the location and/or name of your input file go the line 71 of
 "post_process.cpp", rebuild, run and enjoy
+
+
+See in details: <https://github.com/3dptv/3d-ptv-post-process/tree/master/doc>
