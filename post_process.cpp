@@ -1057,9 +1057,9 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                   }
                  
 
-                  pointList.y[4] [ii]=pointList.we[ii]*pointList.traj[ii][ 9];//w1(i)
-                  pointList.y[5] [ii]=pointList.we[ii]*pointList.traj[ii][10];//w2(i)
-                  pointList.y[6] [ii]=pointList.we[ii]*pointList.traj[ii][11];//w3(i)
+                  pointList.y[4][ii]=pointList.we[ii]*pointList.traj[ii][ 9];//w1(i)
+                  pointList.y[5][ii]=pointList.we[ii]*pointList.traj[ii][10];//w2(i)
+                  pointList.y[6][ii]=pointList.we[ii]*pointList.traj[ii][11];//w3(i)
                   pointList.y[7] [ii]=pointList.we[ii]*pointList.traj[ii][12];//s11(i)
                   pointList.y[8] [ii]=pointList.we[ii]*pointList.traj[ii][13];//s12(i)
                   pointList.y[9] [ii]=pointList.we[ii]*pointList.traj[ii][14];//s13(i)
@@ -1321,7 +1321,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 					 diva=daxdxp[ii]+daydyp[ii]+dazdzp[ii];
 				     ref_diva=fabs(wsq)+fabs(twosijsij)+fabs(daxdxp[ii])+fabs(daydyp[ii])+fabs(dazdzp[ii]);
                      if(ref_diva>0){
-                         reldiva=fabs(4*Q+diva)/ref_diva; // in some versions it's 2*Q
+                         reldiva=fabs(2*Q+diva)/ref_diva; 
 					 }
 					 else{
                          reldiva=1.; 
@@ -1356,7 +1356,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 					 //totQuality
 					 quality=pointList.weDiv*reldiva+pointList.weAcc*absDi;
                      
-					 if(pointList.weDiv*fabs(4*Q+diva)/ref_diva+pointList.weAcc*absDi){
+					 if(pointList.weDiv*fabs(2*Q+diva)/ref_diva+pointList.weAcc*absDi){
                         pointList.count2++;
                         pointList.meanDiss=(pointList.meanDiss*(double)(pointList.count2-1)+diss)/(double)pointList.count2;
                         pointList.meanUSq=(pointList.meanUSq*(double)(pointList.count2-1)+USq)/(double)pointList.count2;                        
