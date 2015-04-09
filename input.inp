@@ -1,13 +1,13 @@
 1	                      %make xuap.* files?                
 1	                      %make trajPoint.* files? 
-c:/PTV/Experiments/res_128_Re1435ptvis/    %path where ptv_is.* files are
-10001	                  %firstFile                
-14332	                  %lastFile                 
-0.02	                  %delta_t 2 msec - just a guess
+./test_data               %path where ptv_is.* files are
+101000	                  %firstFile                
+101007	                  %lastFile                 
+0.01	                  %delta_t 2 msec - just a guess
 0.000001	              %viscosity - water
-5                        %max lenght of polynomial
-1                         %min left/right                 
-0.5                       %max_vel 
+5                         %max lenght of polynomial
+0                         %min left/right                 
+1.5                       %max_vel 
 0.0022                    %radius for interpolation sphere 
 0.4                       %weight for rel diva-4Q error
 0.6                       %weight for rel acceleration error

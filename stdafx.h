@@ -9,13 +9,13 @@
 
 
 #include <iostream>
-#include <tchar.h>
+//#include <tchar.h>
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <fstream>
 #include <string.h>
 #include <float.h>
@@ -29,8 +29,8 @@ struct TpointList
 
   int firstFile;
   int lastFile;
-  int PL,minLeftRight;
-  int count,count2,count3,count4,count5;
+  int PL,minLeftRight,PLh;
+  int count,count2,count3,count4,count5,count6;
 
   double maxVel;
   double meanVel;
@@ -43,6 +43,9 @@ struct TpointList
   
   bool xuap;
   bool traj_point;
+  bool derivatives;
+  bool pressure;
+  bool Hessian;
 
   char path[256];
 
@@ -53,10 +56,11 @@ struct TpointList
   double maxRadius;
   double weDiv;
   double weAcc;
+  double weVel;
   double viscosity;
 
-  double point[300][2000][16];
-  bool occ[10000][1500];
+  double point[500][7000][48];
+  bool occ[30000][7000];
   //int fast_search[200][12][12][12][100];
 
   int numOfFrames;
@@ -78,55 +82,84 @@ struct TpointList
 
   int maxRowIndex;
 
-  double A  [300][20];
-  double AT [20][300];
-  double ATA[20][20];
-  double B  [300][50];
-  double BT [50][300];
-  double BTB[50][50];
-  double C[300][50];
-  double CT [50][300];
-  double CTC[50][50];
+  double A  [500][100];
+  double AT [100][500];
+  double ATA[100][100];
+  double B  [500][100];
+  double BT [100][500];
+  double BTB[100][100];
+  double C[500][100];
+  double CT [100][500];
+  double CTC[100][100];
 	
-  double Y  [300];
-  double y[50][300];
-  double yC[5][300];
+  double Y  [500];
+  double y[50][500];
+  double yC[5][500];
 
-  double X  [300];
-  double ATY[300];
-  double BTY[300];
-  double CTY[300];
+  double X  [500];
+  double ATY[500];
+  double BTY[500];
+  double CTY[500];
   
-  double Yu[300];
-  double Yv[300];
-  double Yw[300];
+  double Yu[500];
+  double Yv[500];
+  double Yw[500];
     
-  double YuB[300];
-  double YvB[300];
-  double YwB[300];
+  double YuB[500];
+  double YvB[500];
+  double YwB[500];
 
-  double YaxB[300];
-  double YayB[300];
-  double YazB[300];
+  double YaxB[500];
+  double YayB[500];
+  double YazB[500];
     
-  double Yaz[300];
-  double Yay[300];
-  double Yax[300];
+  double Yaz[500];
+  double Yay[500];
+  double Yax[500];
+
+  double YuxB[500];
+  double YuyB[500];
+  double YuzB[500];
+  double YvxB[500];
+  double YvyB[500];
+  double YvzB[500];
+  double YwxB[500];
+  double YwyB[500];
+  double YwzB[500];
+
+  double YpxB[500];
+  double YpyB[500];
+  double YpzB[500];
 
   double Aij[3][3];
   double Aaij[3][3];
+  double uxx[9];
+  double pij[3][3];
 
-  double pointPerRadius[300][2]; //0.1mm resolution up to 10mm.
-  int dis[300];
-  int disA[300];
-  int disB[300];
-  int disC[300];
-  double traj[300][65];
-  double we[300];
+  double pointPerRadius[500][2]; //0.1mm resolution up to 10mm.
+  int dis[500];
+  int disA[500];
+  int disB[500];
+  int disC[500];
+  double traj[500][65];
+  double we[500];
   int minTrajLength;
   int noDeriv;
   double c1;
   double c2;
+
+  double xminChamber; //added by Markus, 20.07.2009
+  double xmaxChamber;
+  double yminChannel;
+  double ymaxChannel;
+  double zminChamber;
+  double zmaxChamber;
+  double zminChannel;
+  double zmaxChannel;
+  double yChamberChannel;
+
+  double xminChannel;
+  double xmaxChannel;
 
 
   FILE *fpp;

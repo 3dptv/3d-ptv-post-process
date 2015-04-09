@@ -38,6 +38,8 @@ A PARTICULAR PURPOSE.
    each ptv_is.* file that didn't move into xuap.* file
 */
 
+#pragma GCC diagnostic ignored "-Wformat-security"
+
 #include "stdafx.h"
 
 
