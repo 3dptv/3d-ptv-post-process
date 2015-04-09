@@ -1918,8 +1918,8 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                      fprintf(fpp, "%lf\t", axp[ii]);//7
                      fprintf(fpp, "%lf\t", ayp[ii]);//8
                      fprintf(fpp, "%lf\t", azp[ii]);//9
-					 fprintf(fpp, "%lf\t", (double)(ii));//32 age along trajectory
-					 fprintf(fpp, "%lf\n",pointList.traj[ii][9]);///n, reference to index in rt_is, ptv_is, xuap files
+					 fprintf(fpp, "%lf\t", (double)(ii));//10 age along trajectory
+					 fprintf(fpp, "%lf\n",pointList.traj[ii][9]);///11, n reference to index in rt_is, ptv_is, xuap files
 				  }
 				}
             
