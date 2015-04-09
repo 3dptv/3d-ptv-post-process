@@ -9,13 +9,13 @@
 
 
 #include <iostream>
-#include <tchar.h>
+//#include <tchar.h>
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <fstream>
 #include <string.h>
 #include <float.h>
