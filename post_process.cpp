@@ -1014,7 +1014,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 				  pointList.traj[numInTraj][29]=Liaz[3];
 
                   if(ref_diva>0){
-					  pointList.traj[numInTraj][30]=pointList.weDiv*fabs(4*Q+diva)/ref_diva+pointList.weAcc*absDi;
+					  pointList.traj[numInTraj][30]=pointList.weDiv*fabs(2*Q+diva)/ref_diva+pointList.weAcc*absDi;
                   }
                   else{
                       pointList.traj[numInTraj][30]=0.95;
@@ -1471,7 +1471,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 						pointList.point[ii+2][(int)pointList.traj[ii][31]][34]=quality;
 					    //end of prepare xuag files
                      
-					 if(pointList.weDiv*fabs(4*Q+diva)/ref_diva+pointList.weAcc*absDi){
+					 if(pointList.weDiv*fabs(2*Q+diva)/ref_diva+pointList.weAcc*absDi){
                         pointList.count2++;
                         pointList.meanDiss=(pointList.meanDiss*(double)(pointList.count2-1)+diss)/(double)pointList.count2;
                         pointList.meanUSq=(pointList.meanUSq*(double)(pointList.count2-1)+USq)/(double)pointList.count2;                        
