@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 	if (argc == 1) {
 		if (NULL == (input = fopen("input.inp","r"))){
 		//if (NULL == (input = fopen("input.inp","r"))){
-		    cout<< "\ndid not find *.inp file";
+		    cout<< "\ndid not find *.inp file (default: input.inp)";
 	    }
 	    else{
 		    cout<< "\nautomatically and succesfully opened *.inp file \n";
@@ -205,7 +205,6 @@ void readPTVFile(int n, int index)
        
        fpp = fopen(name,"r");
        fscanf (fpp, "%d\0", &numOfPoints);
-       pointList.point[index+10][0][0]=numOfPoints;
        for (int i=1; i<numOfPoints+1; i++){
            fscanf (fpp, "%d\0", &left);
            fscanf (fpp, "%d\0", &right);
@@ -950,7 +949,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 				  pointList.traj[numInTraj][29]=Liaz[3];
 
                   if(ref_diva>0){
-					  pointList.traj[numInTraj][30]=pointList.weDiv*fabs(4*Q+diva)/ref_diva+pointList.weAcc*absDi;
+					  pointList.traj[numInTraj][30]=pointList.weDiv*fabs(2*Q+diva)/ref_diva+pointList.weAcc*absDi;
                   }
                   else{
                       pointList.traj[numInTraj][30]=0.95;
