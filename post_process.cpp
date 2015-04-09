@@ -1001,7 +1001,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                numInTraj++;
 
                //schauen ob's einen nächsten gibt
-               if(pointList.point[time][n][1]>0 && time<pointList.lastFile){
+               if(pointList.point[time][n][1]>0 && time<pointList.lastFile-pointList.firstFile){
                    n=pointList.point[time][n][1];
                    time++;
                    if( pointList.point[time][n][11]<1. ){  
