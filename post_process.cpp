@@ -72,7 +72,8 @@ int main(int argc, char *argv[])
 	//begin of read in control parameters
 	///////////////////////////////////////////////////////////////////////////////////
 	if (argc == 1) {
-		if (NULL == (input = fopen("D:/post_proc.inp","r"))){
+		if (NULL == (input = fopen("input.inp","r"))){
+		//if (NULL == (input = fopen("input.inp","r"))){
 		    cout<< "\ndid not find *.inp file";
 	    }
 	    else{
@@ -1321,7 +1322,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 					 diva=daxdxp[ii]+daydyp[ii]+dazdzp[ii];
 				     ref_diva=fabs(wsq)+fabs(twosijsij)+fabs(daxdxp[ii])+fabs(daydyp[ii])+fabs(dazdzp[ii]);
                      if(ref_diva>0){
-                         reldiva=fabs(4*Q+diva)/ref_diva; 
+                         reldiva=fabs(4*Q+diva)/ref_diva; // in some versions it's 2*Q
 					 }
 					 else{
                          reldiva=1.; 
