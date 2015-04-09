@@ -34,6 +34,12 @@ A PARTICULAR PURPOSE.
 */
 
 
+/* modified by Alex Liberzon to fix the bug with the last line in
+   each ptv_is.* file that didn't move into xuap.* file
+*/
+
+#pragma GCC diagnostic ignored "-Wformat-security"
+
 #include "stdafx.h"
 
 
@@ -72,9 +78,9 @@ int main(int argc, char *argv[])
 	//begin of read in control parameters
 	///////////////////////////////////////////////////////////////////////////////////
 	if (argc == 1) {
-		//if (NULL == (input = fopen("D:/post_proc_FOR_DEBASHISH.inp","r"))){ //_FOR_MARKUS
 		if (NULL == (input = fopen("input.inp","r"))){
-		    cout<< "\ndid not find input.inp file";
+		//if (NULL == (input = fopen("input.inp","r"))){
+		    cout<< "\ndid not find *.inp file (default: input.inp)";
 	    }
 	    else{
 		    cout<< "\n automatically and succesfully opened *.inp file \n";
@@ -173,7 +179,7 @@ int main(int argc, char *argv[])
 		  cout << "processing file .............."<<i<<"\n";
 		   
           c=sprintf (name, pointList.path);
-	      c+=sprintf (name+c, "/n_trajPoint.");
+	      c+=sprintf (name+c, "/trajPoint.");
           c+=sprintf (name+c, "%1d", i); 
           fpp = fopen(name,"w");
           followTrajPoint(fpp,i,0);
@@ -274,12 +280,12 @@ void readPTVFile(int n, int index)
            fscanf (fpp, "%lf\0", &y);
            fscanf (fpp, "%lf\0", &z);
            rmsDist=0.005;
-           pointList.point[index+10][i][0]=left+1;//;//
-		   pointList.point[index+10][i][1]=right+1;//;//
+           pointList.point[index+10][i][0]=left+1;
+           pointList.point[index+10][i][1]=right+1;
 
-           pointList.point[index+10][i][2]=x*0.001;//;//
-           pointList.point[index+10][i][3]=y*0.001;//;//
-           pointList.point[index+10][i][4]=z*0.001;//;//
+           pointList.point[index+10][i][2]=x*0.001;
+           pointList.point[index+10][i][3]=y*0.001;
+           pointList.point[index+10][i][4]=z*0.001;
            pointList.point[index+10][i][15]=rmsDist;
       }
        fclose (fpp);
@@ -354,7 +360,7 @@ void doCubicSplinesTwenty(bool single,int number)
           for(int t=minIndex-10;t<maxIndex-10+1;t++){
               weight     = pointList.point[t+10][ind[t+10]][15];
               weight     = 1.-1./(1.+exp(-300.*(weight-0.015)));
-			  weight   = 1.; //Beat March 2009
+			  weight   = 1.; //Beat March 2009 //Alex - to check why we remove weight
               pointList.A[t+10][0] = 1.*weight;
               pointList.A[t+10][1] = (double)t*pointList.deltaT*weight;
               pointList.A[t+10][2] = pow((double)t*pointList.deltaT,2.)*weight;
@@ -577,7 +583,7 @@ void writeXUAPFile(int t)
 
     fpp = fopen(name,"w");
     
-    for(int i=1;i<pointList.point[10][0][0];i++){
+    for(int i=1;i<pointList.point[10][0][0];i++){ // in other versions it's +1
        if(pointList.point[10][i][14]>0){
            pointList.count++;
            double vel=pow( pow(pointList.point[10][i][8],2.)
@@ -989,9 +995,16 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 				  diva=Liax[1]+Liay[2]+Liaz[3];
 				  ref_diva=fabs(wsq)+fabs(twosijsij)+fabs(Liax[1])+fabs(Liay[2])+fabs(Liaz[3]);
 
+/*
+* Look in other versions = something with the index, 2,3,4 or 5,6,7
+
                   pointList.traj[numInTraj][ 0]=pointList.point[time][n][5];
                   pointList.traj[numInTraj][ 1]=pointList.point[time][n][6];
                   pointList.traj[numInTraj][ 2]=pointList.point[time][n][7];
+*/                 
+                  pointList.traj[numInTraj][ 0]=pointList.point[time][n][2];
+                  pointList.traj[numInTraj][ 1]=pointList.point[time][n][3];
+                  pointList.traj[numInTraj][ 2]=pointList.point[time][n][4];
                   pointList.traj[numInTraj][ 3]=Liu[0];
                   pointList.traj[numInTraj][ 4]=Liv[0];
                   pointList.traj[numInTraj][ 5]=Liw[0];
@@ -1087,7 +1100,7 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                numInTraj++;
 
                //schauen ob's einen nächsten gibt
-               if(pointList.point[time][n][1]>0 && time<pointList.lastFile){
+               if(pointList.point[time][n][1]>0 && time<pointList.lastFile-pointList.firstFile && time<pointList.numOfFrames-2){
                    n=pointList.point[time][n][1];
                    time++;
                    if( pointList.point[time][n][11]<1. ){  
@@ -1144,9 +1157,9 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
                   }
                  
 
-                  pointList.y[4] [ii]=pointList.we[ii]*pointList.traj[ii][ 9];//w1(i)
-                  pointList.y[5] [ii]=pointList.we[ii]*pointList.traj[ii][10];//w2(i)
-                  pointList.y[6] [ii]=pointList.we[ii]*pointList.traj[ii][11];//w3(i)
+                  pointList.y[4][ii]=pointList.we[ii]*pointList.traj[ii][ 9];//w1(i)
+                  pointList.y[5][ii]=pointList.we[ii]*pointList.traj[ii][10];//w2(i)
+                  pointList.y[6][ii]=pointList.we[ii]*pointList.traj[ii][11];//w3(i)
                   pointList.y[7] [ii]=pointList.we[ii]*pointList.traj[ii][12];//s11(i)
                   pointList.y[8] [ii]=pointList.we[ii]*pointList.traj[ii][13];//s12(i)
                   pointList.y[9] [ii]=pointList.we[ii]*pointList.traj[ii][14];//s13(i)
