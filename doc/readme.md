@@ -24,7 +24,7 @@ It can be used to create the necessary turbulent properties to plot, for instanc
 
 Compile post_process.cpp on your platform using stdafx.cpp
 
-    gcc -o post_process post_process.cpp stdafx.cpp
+    g++ -o post_process post_process.cpp stdafx.cpp
 
 Type
 

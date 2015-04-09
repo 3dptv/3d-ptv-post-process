@@ -74,11 +74,11 @@ int main(int argc, char *argv[])
 	if (argc == 1) {
 		//if (NULL == (input = fopen("C:/input.inp","r"))){ 
 		//if (NULL == (input = fopen("D:/PTV/version_March_2013_scanning/input_2905.txt","r"))){ 
-		if (NULL == (input = fopen("D:\ScanPTV_publish\version_March_2013_scanning/input_41.txt","r"))){ 	
-		    cout<< "\ndid not find *.inp file";
+		if (NULL == (input = fopen("input.inp","r"))){ 	
+		    cout<< "\ndid not find input.inp file";
 	    }
 	    else{
-		    cout<< "\nautomatically and succesfully opened *.inp file \n";
+		    cout<< "\n automatically and succesfully opened *.inp file \n";
 	    }
 	}
 	else{
