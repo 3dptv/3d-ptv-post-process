@@ -1,6 +1,7 @@
 # 3D-PTV post processing C++ code   
 
 Date: October 2007
+Last modified: April 2015
 
 The principle of the following software is described in pages 6-9 of [Luthi et al., JFM (2005)](http://journals.cambridge.org/action/displayAbstract?fromPage=online&aid=291420&fileId=S0022112004003283), and the core for the derivatives is described on page 3 of [Luthi et al., JoT (2007)](http://www.tandfonline.com/doi/abs/10.1080/14685240701522927) .
 
