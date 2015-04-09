@@ -9,13 +9,18 @@
 
 
 #include <iostream>
-#include <tchar.h>
+
+# ifdef OS_WINDOWS
+   #include <tchar.h>
+   #include <malloc.h>
+#endif
+
+
 #include <math.h>
 #include <iostream>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <fstream>
 #include <string.h>
 #include <float.h>
@@ -27,9 +32,14 @@ struct TpointList
 
   char experiment[256];
 
+  int firstSFile;
+  int lastSFile;
   int firstFile;
   int lastFile;
-  int PL,minLeftRight;
+  int numSlices; //added by Beat March 2013
+  short map_slice_cycle[40000][2000];//added by Beat March 2013 <----------das ist recht kritisch, kann es nicht weiter erhˆhen 
+  int numPoints_per_cycle[10000];//added by Beat March 2013
+  int PL,minLeftRight,PLh;
   int count,count2,count3,count4,count5,count6;
 
   double maxVel;
@@ -50,17 +60,22 @@ struct TpointList
   char path[256];
 
   double deltaT;
+  double deltaT_between_slice;
   double tolMaxVel;
   int polyConst;
   int maxRank;
   double maxRadius;
   double weDiv;
   double weAcc;
+  double weVel;
   double viscosity;
 
-  double point[200][7000][48];
-  bool occ[10000][7000];
-  //int fast_search[200][12][12][12][100];
+  double point[200][25000][37]; ////// Beat March 2013, da liegt die einzige 'Schw‰che': Max traj length = 166,.... ohne xuag kˆnnten es 500 sein
+  bool occ[10000][25000]; // occ[10000][25000];
+  short fast_search[200][18][18][9][26];//Beat March 2013, should roughly match the aspect ratio of the observation domain
+  int max_grid_X,max_grid_Y,max_grid_Z,max_grid_C;//Beat March 2013, should roughly match the aspect ratio of the observation domain
+  double maxX,minX,maxY,minY,maxZ,minZ,dh_X,dh_Y,dh_Z;
+  int num_X,num_Y,num_Z;
 
   int numOfFrames;
   bool changed;
@@ -81,71 +96,84 @@ struct TpointList
 
   int maxRowIndex;
 
-  double A  [300][20];
-  double AT [20][300];
-  double ATA[20][20];
-  double B  [300][50];
-  double BT [50][300];
-  double BTB[50][50];
-  double C[300][50];
-  double CT [50][300];
-  double CTC[50][50];
+  double A  [500][100];
+  double AT [100][500];
+  double ATA[100][100];
+  double B  [500][100];
+  double BT [100][500];
+  double BTB[100][100];
+  double C[500][100];
+  double CT [100][500];
+  double CTC[100][100];
 	
-  double Y  [300];
-  double y[50][300];
-  double yC[5][300];
+  double Y  [500];
+  double y[50][500];
+  double yC[5][500];
 
-  double X  [300];
-  double ATY[300];
-  double BTY[300];
-  double CTY[300];
+  double X  [500];
+  double ATY[500];
+  double BTY[500];
+  double CTY[500];
   
-  double Yu[300];
-  double Yv[300];
-  double Yw[300];
+  double Yu[500];
+  double Yv[500];
+  double Yw[500];
     
-  double YuB[300];
-  double YvB[300];
-  double YwB[300];
+  double YuB[500];
+  double YvB[500];
+  double YwB[500];
 
-  double YaxB[300];
-  double YayB[300];
-  double YazB[300];
+  double YaxB[500];
+  double YayB[500];
+  double YazB[500];
     
-  double Yaz[300];
-  double Yay[300];
-  double Yax[300];
+  double Yaz[500];
+  double Yay[500];
+  double Yax[500];
 
-  double YuxB[300];
-  double YuyB[300];
-  double YuzB[300];
-  double YvxB[300];
-  double YvyB[300];
-  double YvzB[300];
-  double YwxB[300];
-  double YwyB[300];
-  double YwzB[300];
+  double YuxB[500];
+  double YuyB[500];
+  double YuzB[500];
+  double YvxB[500];
+  double YvyB[500];
+  double YvzB[500];
+  double YwxB[500];
+  double YwyB[500];
+  double YwzB[500];
 
-  double YpxB[300];
-  double YpyB[300];
-  double YpzB[300];
+  double YpxB[500];
+  double YpyB[500];
+  double YpzB[500];
 
   double Aij[3][3];
   double Aaij[3][3];
   double uxx[9];
   double pij[3][3];
 
-  double pointPerRadius[300][2]; //0.1mm resolution up to 10mm.
-  int dis[300];
-  int disA[300];
-  int disB[300];
-  int disC[300];
-  double traj[300][65];
-  double we[300];
+  double pointPerRadius[500][2]; //0.1mm resolution up to 10mm.
+  int dis[500];
+  int disA[500];
+  int disB[500];
+  int disC[500];
+  double traj[500][65];
+  double we[500];
   int minTrajLength;
   int noDeriv;
   double c1;
   double c2;
+
+  double xminChamber; //added by Markus, 20.07.2009
+  double xmaxChamber;
+  double yminChannel;
+  double ymaxChannel;
+  double zminChamber;
+  double zmaxChamber;
+  double zminChannel;
+  double zmaxChannel;
+  double yChamberChannel;
+
+  double xminChannel;
+  double xmaxChannel;
 
 
   FILE *fpp;
