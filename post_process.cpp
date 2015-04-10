@@ -995,16 +995,9 @@ void followTrajPoint(FILE *fpp, int t,int startPoint)
 				  diva=Liax[1]+Liay[2]+Liaz[3];
 				  ref_diva=fabs(wsq)+fabs(twosijsij)+fabs(Liax[1])+fabs(Liay[2])+fabs(Liaz[3]);
 
-/*
-* Look in other versions = something with the index, 2,3,4 or 5,6,7
-
                   pointList.traj[numInTraj][ 0]=pointList.point[time][n][5];
                   pointList.traj[numInTraj][ 1]=pointList.point[time][n][6];
                   pointList.traj[numInTraj][ 2]=pointList.point[time][n][7];
-*/                 
-                  pointList.traj[numInTraj][ 0]=pointList.point[time][n][2];
-                  pointList.traj[numInTraj][ 1]=pointList.point[time][n][3];
-                  pointList.traj[numInTraj][ 2]=pointList.point[time][n][4];
                   pointList.traj[numInTraj][ 3]=Liu[0];
                   pointList.traj[numInTraj][ 4]=Liv[0];
                   pointList.traj[numInTraj][ 5]=Liw[0];
